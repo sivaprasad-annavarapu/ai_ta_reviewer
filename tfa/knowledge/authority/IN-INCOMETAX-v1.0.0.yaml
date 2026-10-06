@@ -1,0 +1,694 @@
+# ---------------------------------------------------------------------------
+# Authority Pack: India — direct tax, tax audit and return filing.
+#
+# NOTE ON VERIFICATION. The model's recollection of law is not authority. Every
+# provision below carries `verified: false` until a qualified person has checked
+# it against the bare Act, the Rules or the ICAI Guidance Note and set
+# `verified: true` with their name and the date. Until then this pack is usable
+# only in run_mode `simulation`; preflight refuses a `production` run against an
+# unverified pack.
+#
+# `summary` is what gets quoted to the model when a judgment rule is put to it.
+# It must state the requirement, not paraphrase it loosely: whatever is written
+# here is the standard the analysis is measured against.
+#
+# `effective_from` / `effective_to` are ordinary dates. A provision is in force
+# for an assessment year if its window overlaps that year's previous year.
+# ---------------------------------------------------------------------------
+schema_version: 1
+id: IN-INCOMETAX
+version: 1.0.0
+name: India — Income-tax, tax audit and return filing
+language: en-IN
+currency: INR
+verification_status: unverified_draft
+verified_by: null
+verified_on: null
+
+standard_setters:
+  - id: PARLIAMENT
+    name: Parliament of India
+  - id: CBDT
+    name: Central Board of Direct Taxes
+  - id: ICAI
+    name: Institute of Chartered Accountants of India
+
+instruments:
+  - id: ITA1961
+    name: Income-tax Act, 1961
+    setter: PARLIAMENT
+  - id: ITR1962
+    name: Income-tax Rules, 1962
+    setter: CBDT
+  - id: FORM3CD
+    name: Form 3CD — Statement of particulars required under section 44AB
+    setter: CBDT
+  - id: ICDS
+    name: Income Computation and Disclosure Standards
+    setter: CBDT
+  - id: GN3CD
+    name: ICAI Guidance Note on Tax Audit under section 44AB
+    setter: ICAI
+  - id: MSMED2006
+    name: Micro, Small and Medium Enterprises Development Act, 2006
+    setter: PARLIAMENT
+
+# Entity taxonomy. A Client Context must declare exactly one.
+entity_types:
+  - id: company
+    label: Company (other than one claiming presumptive taxation)
+  - id: llp
+    label: Limited Liability Partnership
+  - id: firm
+    label: Partnership firm
+  - id: individual
+    label: Individual carrying on business or profession
+  - id: huf
+    label: Hindu Undivided Family
+  - id: aop_boi
+    label: Association of persons / body of individuals
+  - id: trust
+    label: Trust or institution
+
+# Predicates a rule may name in `applicability`. Resolved once per run from the
+# declared client context and never re-derived by a rule.
+applicability_predicates:
+  - id: is_company
+    label: The assessee is a company
+    derive: entity_type == company
+  - id: is_firm_or_llp
+    label: The assessee is a firm or an LLP
+    derive: entity_type in (firm, llp)
+  - id: has_partners
+    label: The assessee has partners or members whose remuneration is regulated
+    derive: entity_type in (firm, llp, aop_boi)
+  - id: is_tax_audit_case
+    label: The assessee is subject to audit under section 44AB
+    derive: declared in the client context
+  - id: presumptive_claimed
+    label: The assessee has claimed presumptive taxation in any year in the window
+    derive: observed in the filings
+  - id: mat_applicable
+    label: Minimum alternate tax under section 115JB can apply
+    derive: entity_type == company and not concessional regime
+  - id: multi_year
+    label: Two or more assessment years are present in the window
+    derive: observed in the filings
+
+provisions:
+
+  # ---- audit, filing and the form itself ---------------------------------
+  - id: ITA-44AB
+    instrument: ITA1961
+    reference: Section 44AB
+    title: Audit of accounts of certain persons carrying on business or profession
+    summary: >-
+      A person carrying on business must get the accounts audited where total sales,
+      turnover or gross receipts exceed the prescribed limit, and a person carrying on
+      a profession where gross receipts exceed the prescribed limit. The report must be
+      furnished in the prescribed form by the specified date. Where the limit is crossed
+      and no audit report is on record for that year, the obligation is unmet.
+    topics: [audit, turnover, filing]
+    verified: false
+    key_parameters:
+      business_limit_inr: 10000000
+      business_limit_with_digital_receipts_inr: 100000000
+      profession_limit_inr: 5000000
+
+  - id: RULE-6G
+    instrument: ITR1962
+    reference: Rule 6G
+    title: Report of audit of accounts to be furnished under section 44AB
+    summary: >-
+      The report of audit under section 44AB is to be furnished in Form 3CA where the
+      accounts are audited under any other law, and in Form 3CB otherwise; in either
+      case the statement of particulars is in Form 3CD. The form used must match the
+      basis on which the accounts were audited.
+    topics: [audit, form]
+    verified: false
+
+  - id: ITA-139-1
+    instrument: ITA1961
+    reference: Section 139(1)
+    title: Return of income — due date
+    summary: >-
+      Every person to whom the section applies must furnish a return of income on or
+      before the due date. For an assessee required to get accounts audited, the due
+      date is later than for other assessees, and the audit report is required to be
+      furnished by the specified date preceding it.
+    topics: [filing, dates]
+    verified: false
+
+  - id: ITA-139-5
+    instrument: ITA1961
+    reference: Section 139(5)
+    title: Revised return
+    summary: >-
+      A return furnished under section 139(1) or 139(4) may be revised where the person
+      discovers an omission or a wrong statement, within the time allowed. A revised
+      return supersedes the original for the same assessment year, and both cannot be
+      treated as the operative return.
+    topics: [filing, revision]
+    verified: false
+
+  - id: FORM3CD-CL4
+    instrument: FORM3CD
+    reference: Form 3CD clause 4
+    title: Registration numbers under indirect tax laws
+    summary: >-
+      The particulars require the registration number or identification number allotted
+      under any indirect tax law, where the assessee is liable to pay such tax. A
+      registration reported in one year and absent in the next, without a corresponding
+      change in the business, is an inconsistency in the particulars.
+    topics: [gst, registration]
+    verified: false
+
+  - id: FORM3CD-CL8A
+    instrument: FORM3CD
+    reference: Form 3CD clause 8a
+    title: Whether the assessee has opted for a concessional taxation regime
+    summary: >-
+      The particulars require a statement whether the assessee has opted for taxation
+      under section 115BA, 115BAA, 115BAB, 115BAC or 115BAD. Where such an option has
+      been exercised it is, for most of these sections, not capable of being withdrawn
+      in a later year, so a regime reported in one year and not in the next requires an
+      explanation.
+    topics: [regime, rates]
+    verified: false
+
+  - id: FORM3CD-CL11
+    instrument: FORM3CD
+    reference: Form 3CD clause 11
+    title: Books of account prescribed, maintained and examined
+    summary: >-
+      The particulars require the books of account prescribed under section 44AA, the
+      books maintained, the address at which they are kept, and the books examined. The
+      list examined cannot be wider than the list maintained.
+    topics: [books]
+    verified: false
+
+  - id: FORM3CD-CL13
+    instrument: FORM3CD
+    reference: Form 3CD clause 13
+    title: Method of accounting and ICDS adjustments
+    summary: >-
+      The particulars require the method of accounting employed, whether there has been
+      any change in the method from the preceding year, the effect of the change, and
+      the adjustments required by the Income Computation and Disclosure Standards. A
+      change in method must be reported in the year of change together with its effect
+      on the profit.
+    topics: [accounting_method, icds]
+    verified: false
+
+  - id: FORM3CD-CL14
+    instrument: FORM3CD
+    reference: Form 3CD clause 14
+    title: Method of valuation of closing stock
+    summary: >-
+      The particulars require the method of valuation of closing stock and the effect on
+      profit of any deviation from the method prescribed by section 145A. The closing
+      stock of one year is the opening stock of the next; a discontinuity between them
+      is an inconsistency in the particulars unless a reason is stated.
+    topics: [stock, valuation]
+    verified: false
+
+  - id: FORM3CD-CL18
+    instrument: FORM3CD
+    reference: Form 3CD clause 18
+    title: Particulars of depreciation allowable under the Act
+    summary: >-
+      The particulars require, block by block, the rate, the opening written down value,
+      additions and deductions with dates, and the depreciation allowable, and the
+      closing written down value. The closing written down value of a block in one year
+      is its opening written down value in the next.
+    topics: [depreciation, blocks]
+    verified: false
+
+  - id: FORM3CD-CL21
+    instrument: FORM3CD
+    reference: Form 3CD clause 21
+    title: Amounts debited to the profit and loss account that are inadmissible
+    summary: >-
+      The particulars require amounts debited to the profit and loss account that are in
+      the nature of capital expenditure, personal expenditure, advertisement in a
+      political publication, penalty or fine, and amounts inadmissible under section
+      40(a), 40A(3), 40A(3A) and 36(1)(iii), among others.
+    topics: [disallowance]
+    verified: false
+
+  - id: FORM3CD-CL23
+    instrument: FORM3CD
+    reference: Form 3CD clause 23
+    title: Payments made to persons specified in section 40A(2)(b)
+    summary: >-
+      The particulars require details of payments made to persons specified under
+      section 40A(2)(b), being persons in whom the assessee or its directors, partners
+      or members have a substantial interest. The clause calls for the name, the
+      permanent account number, the relation and the amount.
+    topics: [related_party]
+    verified: false
+
+  - id: FORM3CD-CL26
+    instrument: FORM3CD
+    reference: Form 3CD clause 26
+    title: Sums referred to in section 43B
+    summary: >-
+      The particulars require, for sums referred to in clauses (a) to (h) of section 43B,
+      the liability pre-existing on the first day of the previous year and the liability
+      incurred during it, split between what was paid on or before the due date for
+      furnishing the return and what was not. The unpaid closing liability of one year is
+      the pre-existing liability of the next.
+    topics: [43B, statutory_dues]
+    verified: false
+
+  - id: FORM3CD-CL27
+    instrument: FORM3CD
+    reference: Form 3CD clause 27
+    title: CENVAT / input tax credit and prior period items
+    summary: >-
+      The particulars require the amount of credit availed of or utilised during the
+      previous year and its treatment in the profit and loss account, and particulars of
+      income or expenditure of a prior period credited or debited to the profit and loss
+      account.
+    topics: [credits, prior_period]
+    verified: false
+
+  - id: FORM3CD-CL31
+    instrument: FORM3CD
+    reference: Form 3CD clause 31
+    title: Loans, deposits and specified sums taken or repaid otherwise than by account payee instrument
+    summary: >-
+      The particulars require details of each loan or deposit accepted or repaid, and of
+      each specified sum received, otherwise than by an account payee cheque, account
+      payee bank draft or the prescribed electronic modes, and of receipts covered by
+      section 269ST.
+    topics: [cash, 269SS, 269ST, 269T]
+    verified: false
+
+  - id: FORM3CD-CL32
+    instrument: FORM3CD
+    reference: Form 3CD clause 32
+    title: Brought forward loss and depreciation allowance
+    summary: >-
+      The particulars require details of brought forward loss or depreciation allowance
+      in the prescribed manner, together with the amounts as returned and as assessed.
+      The closing balance carried forward in one year is the opening balance brought
+      forward in the next.
+    topics: [losses, carry_forward]
+    verified: false
+
+  - id: FORM3CD-CL34
+    instrument: FORM3CD
+    reference: Form 3CD clause 34
+    title: Compliance with the provisions relating to deduction or collection of tax at source
+    summary: >-
+      The particulars require, section by section, the total amount of payment of the
+      nature specified, the amount on which tax was required to be deducted, the amount
+      on which tax was deducted, the amount deducted, the amount paid to the credit of
+      the Central Government, and whether the statements of deduction were furnished
+      within the prescribed time, together with interest payable under section 201(1A).
+    topics: [tds, 201]
+    verified: false
+
+  - id: FORM3CD-CL35
+    instrument: FORM3CD
+    reference: Form 3CD clause 35
+    title: Quantitative details of principal items
+    summary: >-
+      The particulars require quantitative details of the principal items of goods traded
+      or of raw materials, finished products and by-products: opening stock, purchases,
+      consumption, sales, closing stock, shortage or excess. The closing quantity of one
+      year is the opening quantity of the next, and the arithmetic of each item must
+      reconcile.
+    topics: [quantitative, stock]
+    verified: false
+
+  - id: FORM3CD-CL40
+    instrument: FORM3CD
+    reference: Form 3CD clause 40
+    title: Accounting ratios with calculations for the current and preceding year
+    summary: >-
+      The particulars require, for the previous year and the preceding previous year,
+      total turnover, gross profit to turnover, net profit to turnover, stock-in-trade to
+      turnover, and material consumed to finished goods produced. The preceding-year
+      figures reported in one year are the current-year figures reported in the year
+      before it.
+    topics: [ratios, turnover]
+    verified: false
+
+  - id: FORM3CD-CL44
+    instrument: FORM3CD
+    reference: Form 3CD clause 44
+    title: Break-up of total expenditure into entities registered and not registered under GST
+    summary: >-
+      The particulars require the total expenditure of the previous year broken into
+      expenditure in respect of entities registered under GST — split between goods or
+      services exempt from GST, entities falling under the composition scheme, other
+      registered entities — and expenditure relating to entities not registered under
+      GST. The components must sum to the total expenditure stated.
+    topics: [gst, expenditure]
+    verified: false
+
+  # ---- computation provisions --------------------------------------------
+  - id: ITA-32
+    instrument: ITA1961
+    reference: Section 32
+    title: Depreciation
+    summary: >-
+      Depreciation is allowed on the written down value of a block of assets at the
+      prescribed rate. Where an asset is acquired during the previous year and put to use
+      for less than 180 days, the deduction is restricted to half of the prescribed rate.
+      The written down value of a block is carried from one year to the next.
+    topics: [depreciation]
+    verified: false
+
+  - id: ITA-32-2
+    instrument: ITA1961
+    reference: Section 32(2)
+    title: Unabsorbed depreciation
+    summary: >-
+      Depreciation that cannot be given full effect to in a previous year is added to the
+      depreciation of the following year, and so on, without limit of time. An unabsorbed
+      depreciation balance therefore continues across years and does not lapse.
+    topics: [depreciation, carry_forward]
+    verified: false
+
+  - id: ITA-36-1-va
+    instrument: ITA1961
+    reference: Section 36(1)(va)
+    title: Employee contributions to provident and other welfare funds
+    summary: >-
+      A sum received by the assessee from employees as a contribution to a provident fund
+      or other welfare fund is deductible only if credited to the employee's account in
+      the relevant fund on or before the due date under the relevant law. Payment after
+      that due date is not allowable, and section 43B does not save it.
+    topics: [pf, employee_contribution]
+    verified: false
+
+  - id: ITA-40a-ia
+    instrument: ITA1961
+    reference: Section 40(a)(ia)
+    title: Disallowance for failure to deduct or pay tax at source
+    summary: >-
+      Where tax is deductible at source on a sum payable to a resident and has not been
+      deducted, or having been deducted has not been paid on or before the due date
+      specified in section 139(1), the prescribed proportion of that sum is not deductible
+      in computing income.
+    topics: [tds, disallowance]
+    verified: false
+
+  - id: ITA-40b
+    instrument: ITA1961
+    reference: Section 40(b)
+    title: Remuneration and interest to partners
+    summary: >-
+      In the case of a firm, payment of interest to a partner exceeding the prescribed
+      rate, and payment of remuneration otherwise than to a working partner or in excess
+      of the limits computed on book profit, is not deductible.
+    topics: [firm, partners]
+    verified: false
+
+  - id: ITA-40A3
+    instrument: ITA1961
+    reference: Section 40A(3) and 40A(3A)
+    title: Payments otherwise than by account payee instrument
+    summary: >-
+      Where a payment or the aggregate of payments made to a person in a day, otherwise
+      than by an account payee cheque, account payee bank draft or the prescribed
+      electronic modes, exceeds the prescribed limit, no deduction is allowed in respect
+      of that expenditure. A corresponding provision brings to charge a liability
+      discharged in that manner in a later year.
+    topics: [cash, disallowance]
+    verified: false
+    key_parameters:
+      limit_inr: 10000
+      transporter_limit_inr: 35000
+
+  - id: ITA-40A2b
+    instrument: ITA1961
+    reference: Section 40A(2)(b)
+    title: Payments to specified persons
+    summary: >-
+      Expenditure in respect of which payment is made to a specified person is liable to
+      be disallowed to the extent the Assessing Officer considers it excessive or
+      unreasonable having regard to the fair market value of the goods, services or
+      facilities. Such payments must be reported in the particulars.
+    topics: [related_party]
+    verified: false
+
+  - id: ITA-41-1
+    instrument: ITA1961
+    reference: Section 41(1)
+    title: Remission or cessation of a trading liability
+    summary: >-
+      Where an allowance or deduction has been made in any year in respect of loss,
+      expenditure or a trading liability, and the assessee subsequently obtains a benefit
+      by way of remission or cessation of that liability, the amount obtained is chargeable
+      to tax in the year of remission or cessation.
+    topics: [remission, liability]
+    verified: false
+
+  - id: ITA-43B
+    instrument: ITA1961
+    reference: Section 43B
+    title: Certain deductions allowable only on actual payment
+    summary: >-
+      A deduction for any sum payable by way of tax, duty, cess or fee, employer's
+      contribution to a welfare fund, bonus or commission to employees, interest on
+      borrowings from specified lenders, and the other sums listed in the section, is
+      allowable only in the year of actual payment, unless it is paid on or before the due
+      date for furnishing the return of income for the previous year in which the liability
+      was incurred.
+    topics: [43B, statutory_dues]
+    verified: false
+
+  - id: ITA-43B-h
+    instrument: ITA1961
+    reference: Section 43B(h)
+    title: Sums payable to micro and small enterprises
+    summary: >-
+      A sum payable to a micro or small enterprise beyond the time limit specified in
+      section 15 of the Micro, Small and Medium Enterprises Development Act, 2006 is
+      allowable only in the previous year in which the sum is actually paid, and the
+      proviso permitting payment by the return due date does not apply to it.
+    topics: [msme, 43B]
+    verified: false
+    effective_from: 2023-04-01
+
+  - id: MSMED-S15
+    instrument: MSMED2006
+    reference: Section 15, MSMED Act 2006
+    title: Liability of the buyer to make payment
+    summary: >-
+      Where a supplier that is a micro or small enterprise supplies goods or renders
+      services, the buyer must make payment on or before the date agreed in writing, and
+      in any case within forty-five days from the day of acceptance or deemed acceptance.
+    topics: [msme]
+    verified: false
+
+  - id: ITA-44AD
+    instrument: ITA1961
+    reference: Section 44AD
+    title: Presumptive taxation for eligible businesses
+    summary: >-
+      In the case of an eligible assessee engaged in an eligible business, a sum at the
+      prescribed percentage of total turnover or gross receipts is deemed to be the profits
+      of that business. Where the assessee declares profit under this section for a
+      previous year and does not do so for any of the five succeeding years, the assessee
+      is not eligible to claim the benefit for the five years subsequent to that year.
+    topics: [presumptive]
+    verified: false
+    key_parameters:
+      rate_cash: 0.08
+      rate_digital: 0.06
+
+  - id: ITA-44ADA
+    instrument: ITA1961
+    reference: Section 44ADA
+    title: Presumptive taxation for professionals
+    summary: >-
+      In the case of an assessee engaged in a specified profession whose gross receipts do
+      not exceed the prescribed limit, a sum at the prescribed percentage of gross receipts
+      is deemed to be the profits and gains of the profession.
+    topics: [presumptive, profession]
+    verified: false
+    key_parameters:
+      rate: 0.50
+
+  - id: ITA-72
+    instrument: ITA1961
+    reference: Section 72
+    title: Carry forward and set off of business loss
+    summary: >-
+      Where the loss under the head profits and gains of business or profession cannot be
+      wholly set off, so much of the loss as has not been set off is carried forward to the
+      following assessment year and set off against profits of any business, for not more
+      than eight assessment years immediately succeeding the year in which the loss was
+      computed. The amount carried forward in one year is the amount brought forward in the
+      next, and it lapses when the eighth year passes.
+    topics: [losses, carry_forward]
+    verified: false
+    key_parameters:
+      years: 8
+
+  - id: ITA-79
+    instrument: ITA1961
+    reference: Section 79
+    title: Carry forward and set off of losses in the case of certain companies
+    summary: >-
+      In the case of a company not being one in which the public are substantially
+      interested, a loss incurred in any year prior to the previous year is not carried
+      forward and set off unless, on the last day of the previous year, shares carrying not
+      less than fifty-one per cent of the voting power were beneficially held by persons
+      who beneficially held shares carrying not less than fifty-one per cent of the voting
+      power on the last day of the year in which the loss was incurred.
+    topics: [losses, shareholding]
+    verified: false
+
+  - id: ITA-115JB
+    instrument: ITA1961
+    reference: Section 115JB
+    title: Minimum alternate tax
+    summary: >-
+      Where the income-tax payable by a company on its total income is less than the
+      prescribed percentage of its book profit, the book profit is deemed to be the total
+      income and tax is payable at that percentage. Credit for tax so paid is available for
+      set-off in later years, and the credit balance runs across years.
+    topics: [mat, company]
+    verified: false
+
+  - id: ITA-115BAA
+    instrument: ITA1961
+    reference: Section 115BAA
+    title: Concessional rate of tax for domestic companies
+    summary: >-
+      A domestic company may exercise the option to be taxed at the concessional rate,
+      subject to forgoing the specified deductions and to the consequence that the
+      provisions of section 115JB do not apply. The option, once exercised for a previous
+      year, cannot subsequently be withdrawn for that or any other previous year.
+    topics: [regime, company]
+    verified: false
+
+  - id: ITA-145
+    instrument: ITA1961
+    reference: Section 145
+    title: Method of accounting
+    summary: >-
+      Income chargeable under the head profits and gains of business or profession is to be
+      computed in accordance with either the cash or the mercantile system of accounting
+      regularly employed by the assessee, subject to the notified income computation and
+      disclosure standards. A change in the method employed must be disclosed with its
+      effect.
+    topics: [accounting_method]
+    verified: false
+
+  - id: ITA-145A
+    instrument: ITA1961
+    reference: Section 145A
+    title: Method of valuation of inventory
+    summary: >-
+      The valuation of purchase and sale of goods and of inventory is to be made in
+      accordance with the method of accounting regularly employed, adjusted to include the
+      amount of any tax, duty, cess or fee actually paid or incurred to bring the goods to
+      the place of their location and condition as on the date of valuation.
+    topics: [stock, valuation]
+    verified: false
+
+  - id: ITA-269SS
+    instrument: ITA1961
+    reference: Section 269SS
+    title: Mode of taking or accepting certain loans, deposits and specified sums
+    summary: >-
+      No person shall take or accept from any other person any loan, deposit or specified
+      sum otherwise than by an account payee cheque, account payee bank draft or the
+      prescribed electronic modes, where the amount or the aggregate amount is the
+      prescribed limit or more.
+    topics: [cash, loans]
+    verified: false
+    key_parameters:
+      limit_inr: 20000
+
+  - id: ITA-269T
+    instrument: ITA1961
+    reference: Section 269T
+    title: Mode of repayment of certain loans and deposits
+    summary: >-
+      No branch of a banking company or any other person shall repay any loan or deposit or
+      specified advance otherwise than by an account payee cheque, account payee bank draft
+      or the prescribed electronic modes, where the amount or the aggregate amount is the
+      prescribed limit or more.
+    topics: [cash, loans]
+    verified: false
+    key_parameters:
+      limit_inr: 20000
+
+  - id: ITA-269ST
+    instrument: ITA1961
+    reference: Section 269ST
+    title: Mode of undertaking transactions
+    summary: >-
+      No person shall receive an amount of two lakh rupees or more in aggregate from a
+      person in a day, in respect of a single transaction, or in respect of transactions
+      relating to one event or occasion, otherwise than by an account payee cheque, account
+      payee bank draft or the prescribed electronic modes.
+    topics: [cash, receipts]
+    verified: false
+    key_parameters:
+      limit_inr: 200000
+
+  - id: ITA-201-1A
+    instrument: ITA1961
+    reference: Section 201(1A)
+    title: Interest for failure to deduct or pay tax at source
+    summary: >-
+      A person who does not deduct the whole or any part of the tax, or after deducting
+      fails to pay it, is liable to pay simple interest at the prescribed rates for the
+      period of the default, and that interest must be paid before furnishing the
+      statements of deduction.
+    topics: [tds, interest]
+    verified: false
+
+  - id: ITA-92E
+    instrument: ITA1961
+    reference: Section 92E
+    title: Report from an accountant in respect of international and specified domestic transactions
+    summary: >-
+      Every person who has entered into an international transaction or a specified domestic
+      transaction during a previous year must obtain a report from an accountant and furnish
+      it by the specified date.
+    topics: [transfer_pricing]
+    verified: false
+
+  - id: ITA-50C
+    instrument: ITA1961
+    reference: Section 50C and 43CA
+    title: Transfer of land or building — value adopted for stamp duty
+    summary: >-
+      Where the consideration received on transfer of land or building is less than the
+      value adopted or assessed for the purpose of stamp duty, that value is, subject to the
+      prescribed tolerance band, deemed to be the full value of the consideration.
+    topics: [property, deeming]
+    verified: false
+
+  - id: ITA-2-22-e
+    instrument: ITA1961
+    reference: Section 2(22)(e)
+    title: Deemed dividend
+    summary: >-
+      Any payment by a company, not being a company in which the public are substantially
+      interested, of any sum by way of advance or loan to a shareholder holding not less
+      than ten per cent of the voting power, or to a concern in which such shareholder has a
+      substantial interest, is dividend to the extent of accumulated profits.
+    topics: [dividend, related_party]
+    verified: false
+
+  - id: ICDS-I
+    instrument: ICDS
+    reference: ICDS I — Accounting Policies
+    title: Disclosure of accounting policies
+    summary: >-
+      Accounting policies adopted are to be disclosed, and a change in an accounting policy
+      that has a material effect is to be disclosed together with the amount of the effect.
+      An accounting policy is not to be changed without a reasonable cause.
+    topics: [icds, accounting_method]
+    verified: false

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TFA — Tax Filings Analyser</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="shell">
+
+  <!-- ============================================ fixed status rail ------ -->
+  <aside class="side">
+    <div class="brand">
+      <div class="mark">TFA</div>
+      <div>
+        <div class="bt">Tax Filings Analyser</div>
+        <div class="bs" id="entity">No client loaded</div>
+      </div>
+    </div>
+
+    <div class="sect first">
+      <div class="sh">Client</div>
+      <div class="clientpick" id="clients"></div>
+    </div>
+
+    <div class="sect">
+      <div class="sh">Progress</div>
+      <div class="rail" id="rail">
+        <div class="stg" data-k="preflight"><span class="mark"></span><span>Before opening the folder</span></div>
+        <div class="stg" data-k="reading"><span class="mark"></span><span>Reading the filings</span></div>
+        <div class="stg" data-k="matrix"><span class="mark"></span><span>Building the fact matrix</span></div>
+        <div class="stg" data-k="trends"><span class="mark"></span><span>Measuring the trends</span></div>
+        <div class="stg" data-k="charts"><span class="mark"></span><span>Drawing the charts</span></div>
+      <div class="stg" data-k="assessing"><span class="mark"></span><span>Applying the rules</span></div>
+        <div class="stg" data-k="comparing"><span class="mark"></span><span>Comparing the years openly</span></div>
+        <div class="stg" data-k="inferring"><span class="mark"></span><span>Inferring from the briefs</span></div>
+      <div class="stg" data-k="programme"><span class="mark"></span><span>Building the audit plan</span></div>
+      <div class="stg" data-k="report"><span class="mark"></span><span>Drafting the report</span></div>
+      </div>
+    </div>
+
+    <div class="sect" id="costpanel">
+      <div class="sh">Charges</div>
+      <div class="costgrid">
+        <div class="cl">This run</div><div class="cv" id="run-total">—</div>
+        <div class="cs">AI charge</div><div class="cs r" id="run-ai">—</div>
+        <div class="cs">Portal charge</div><div class="cs r" id="run-portal">—</div>
+      </div>
+      <div class="costgrid sep">
+        <div class="cl">Session <span class="faint" id="run-count"></span></div>
+        <div class="cv" id="ses-total">—</div>
+        <div class="cs">AI charge</div><div class="cs r" id="ses-ai">—</div>
+        <div class="cs">Portal charge</div><div class="cs r" id="ses-portal">—</div>
+      </div>
+      <div class="costnote" id="costnote">Portal charge matches the AI charge.</div>
+    </div>
+
+    <div class="sect" id="aislot"></div>
+  </aside>
+
+  <!-- ============================================ scrolling content ------ -->
+  <main class="main">
+    <nav id="tabs" class="toptabs">
+      <button data-t="run" aria-selected="true">Analysis</button>
+      <button data-t="attendance">Attendance</button>
+      <button data-t="matrix">Fact matrix</button>
+      <button data-t="charts">Charts</button>
+      <button data-t="trends">Trends</button>
+      <button data-t="findings">Findings</button>
+      <button data-t="inference">Inference</button>
+      <button data-t="plan">Audit plan</button>
+      <button data-t="enquiries">Enquiries</button>
+      <button data-t="register">Register</button>
+      <button data-t="rules">Canonical rules</button>
+      <button data-t="score">Scorecard</button>
+      <button data-t="manifest">Run manifest</button>
+      <span class="ext">rules tab = the method · internal</span>
+    </nav>
+
+    <div class="scrollarea" id="scrollarea">
+      <section class="tab on" id="tab-run">
+        <div id="idle" class="card pad blk">
+          <p style="margin:0 0 6px"><b>Nothing has been analysed yet.</b></p>
+          <p class="lede" style="margin:0">The analysis reads only the JSON files in
+          this client's folder — the returns and the tax audit reports as exported by
+          the e-filing utility. Press <b>Run analysis</b> below to read them, build the
+          fact matrix across the years, and apply the canonical rules.</p>
+        </div>
+        <div id="stream"></div>
+      </section>
+
+      <section class="tab" id="tab-attendance"><div class="empty">Loading the register…</div></section>
+      <section class="tab" id="tab-matrix"><div class="empty">Run an analysis to build the fact matrix.</div></section>
+      <section class="tab" id="tab-charts"><div class="empty">Run an analysis to draw the charts.</div></section>
+      <section class="tab" id="tab-trends"><div class="empty">Run an analysis to measure the trends.</div></section>
+      <section class="tab" id="tab-findings"><div class="empty">Run an analysis to see the findings register.</div></section>
+      <section class="tab" id="tab-inference"><div class="empty">Run an analysis to put the briefs to the inference layer.</div></section>
+      <section class="tab" id="tab-plan"><div class="empty">Run an analysis to build the audit programme.</div></section>
+      <section class="tab" id="tab-enquiries"><div class="empty">Run an analysis to see what to ask.</div></section>
+      <section class="tab" id="tab-register"><div class="empty">Loading the register…</div></section>
+      <section class="tab" id="tab-rules"><div class="empty">Loading the canonical rules…</div></section>
+      <section class="tab" id="tab-score"><div class="empty">Run an analysis to score it against the planted-defect manifest.</div></section>
+      <section class="tab" id="tab-manifest"><div class="empty">Run an analysis to pin a manifest.</div></section>
+    </div>
+
+    <!-- ========================================== anchored dock ---------- -->
+    <div class="chatdock" id="chat">
+      <div class="chatbar">
+        <form id="chatform" autocomplete="off">
+          <div class="chatrow">
+            <textarea id="q" rows="4" maxlength="1000"
+              placeholder="Ask about these filings — answers cite the fact matrix and cannot change a finding.&#10;Enter to send, Shift+Enter for a new line."></textarea>
+            <div class="actions">
+              <button id="asksend" type="submit" class="primary">Ask</button>
+              <button id="run" type="button" class="runbtn">
+                <span class="dot"></span><span id="runlabel">Run analysis</span>
+              </button>
+            </div>
+          </div>
+        </form>
+        <div id="suggest" class="suggest"></div>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

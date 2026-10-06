@@ -1,0 +1,29 @@
+# The real environment carries an API key and a database password.
+env
+# Model responses, content-addressed and disposable.
+.tfa-cache/
+# Client filings never belong in the repository.
+filings/*/
+!filings/README.md
+# Nor does a client's scrutiny record.
+scrutiny/*/
+!scrutiny/README.md
+.venv/
+__pycache__/
+*.pyc
+out/
+.DS_Store
+
+# awf runtime
+logs/
+.awf/
+DEPLOYED_REVISION
+backend/.venv-old-*/
+.venv-old-*/
+
+# Client context files describe real assessees (name, PAN). Only the
+# synthetic ACME client is versioned.
+clients/*.yaml
+!clients/ACME-PVT-LTD.yaml
+# Local Claude Code settings
+.claude/

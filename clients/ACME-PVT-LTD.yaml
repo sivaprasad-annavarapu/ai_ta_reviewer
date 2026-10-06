@@ -1,0 +1,28 @@
+# Client Context — declared before the filings are opened.
+#
+# What is written here is the firm's own statement about the assessee. The
+# filings are compared against it: a PAN or a name in a return that differs
+# from what is declared here is a finding, not a correction.
+#
+# Delete this file and the analysis still runs — the identity is then read out
+# of the filings and marked provisional, and every comparison that would have
+# tested the declaration is reported as not performed.
+client_id: ACME-PVT-LTD
+run_mode: simulation
+
+name: Acme Industrial Pumps Private Limited
+pan: AABCA1234A
+entity_type: company
+nature_of_business: Manufacture of industrial pumps and pumping equipment
+
+# Whether the accounts are liable to audit under section 44AB. Where this is
+# left null it is taken from whether an audit report is on file, which is a
+# weaker basis and is recorded as such.
+tax_audit_applicable: true
+
+firm: Bhandari & Rao, Chartered Accountants
+engagement_partner: R. Bhandari
+
+attributes:
+  closely_held: true
+  concessional_regime_opted: false

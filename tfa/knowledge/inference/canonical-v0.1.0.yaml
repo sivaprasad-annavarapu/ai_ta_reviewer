@@ -1,0 +1,261 @@
+# ---------------------------------------------------------------------------
+# The inference catalogue.
+#
+# Every use of a model in this system is an entry in this file. Each one names
+# the series it is allowed to see, the charts a reader will be looking at while
+# they read it, the deterministic findings that are already settled, and the
+# one question being put — with the standard for answering it.
+#
+# The order is the point. Python extracts, measures and decides everything that
+# arithmetic can decide. Only then is a bounded question asked of a model, over
+# a brief Python wrote. A model given the whole file will say something
+# plausible about anything; a model given a brief can only answer the question
+# in front of it, and every sentence it writes cites a cell that a person can
+# check against the chart.
+#
+# An entry must declare:
+#   topic / title       what the brief is about
+#   facts               the series that go into it, in order
+#   charts              which charts show the same numbers
+#   settled_themes      which deterministic findings to treat as settled
+#   question            the one question
+#   rubric              how to answer it, and when to answer "cannot tell"
+#   correlate_with      which declared factors a correlation may be drawn to
+#   authority           the provisions quoted alongside, where the question is
+#                       normative rather than analytical
+# ---------------------------------------------------------------------------
+schema_version: 1
+version: 0.1.0
+context_pack: IN-CONTEXT
+
+topics:
+  - id: profitability
+    label: Trading and profitability
+  - id: expenditure
+    label: Expenditure and its composition
+  - id: assets
+    label: Fixed assets and depreciation
+  - id: working_capital
+    label: Working capital and cash cycle
+  - id: statutory
+    label: Statutory dues and tax at source
+  - id: computation
+    label: Computation of income and tax borne
+  - id: consistency
+    label: The two documents against each other
+  - id: exposure
+    label: Where an assessment would begin
+
+inferences:
+
+  - id: INF-001
+    topic: profitability
+    title: Aberrations in the profit line, and what corroborates them
+    charts: [CHT-001, CHT-002]
+    facts: [turnover_3cd, gp_numerator_3cd, np_numerator_3cd, gp_ratio_3cd,
+            np_ratio_3cd, material_ratio_3cd, stock_ratio_3cd, expense_ratio,
+            purchases_itr, gross_profit_itr]
+    settled_themes: [trend, tie_out, arithmetic]
+    correlate_with: [trade_cycle, input_costs, statutory_change, entity_event]
+    question: >-
+      Identify each year in which the profit line departs from its own trend, and say
+      for each whether the other series reported for the same year corroborate the
+      departure or contradict it.
+    rubric: >-
+      Work year by year on the series given. A departure is corroborated where the
+      series that would have to move with it do move: a gross margin that falls
+      because material consumption rose, a net margin that falls because expenditure
+      rose while the gross margin held, a turnover that fell in a year the context
+      file records as disrupted. It is contradicted where the margin moves and the
+      inputs do not — a gross margin falling seven points while material consumption
+      to finished goods stays flat to the second decimal is not a trading event, and
+      you should say so plainly. Report at most four aberrations, and none where
+      fewer than three years carry the series. Where a movement is fully explained by
+      an entry in the context file, say that too: an aberration explained is as
+      useful to the reader as one that is not. Never assert a cause the cells and the
+      context do not support; offer it as a hypothesis with what would confirm it.
+    authority: [FORM3CD-CL40, ITA-145]
+    severity: high
+
+  - id: INF-002
+    topic: expenditure
+    title: What the composition of expenditure changed, and whether the business changed with it
+    charts: [CHT-010, CHT-009, CHT-013]
+    facts: [total_expenditure_3cd, expenditure_unregistered_3cd,
+            unregistered_expenditure_share, expenditure_other_registered_3cd,
+            cash_disallowance_3cd, cash_disallowance_to_expenditure,
+            payments_40a2b_3cd, related_party_share, purchases_itr, turnover_3cd]
+    settled_themes: [trend, particulars, exposure]
+    correlate_with: [trade_cycle, statutory_change, input_costs, entity_event]
+    question: >-
+      Did the composition of expenditure shift in any year in a way the volume of
+      business does not explain, and what would explain it?
+    rubric: >-
+      A shift in composition is not the same as a rise in expenditure. Normalise
+      against turnover and total expenditure before saying anything. FAIL-worthy
+      shifts are those where a share moves materially while the business volume is
+      broadly unchanged — the unregistered share tripling, related-party payments
+      taking a step up, cash-linked heads appearing after nil years. Where the
+      absolute figure grows in line with turnover and the share is stable, say so and
+      report nothing. Do not treat the introduction of a reporting requirement as a
+      change in the business: where the context file records that a clause or a
+      section began to apply in a year, a first-year figure is consistent with the
+      change in law, and that is the explanation to offer first.
+    authority: [FORM3CD-CL44, ITA-40A3, ITA-40A2b]
+    severity: high
+
+  - id: INF-003
+    topic: working_capital
+    title: Whether the cash cycle is consistent with the profit reported
+    charts: [CHT-006, CHT-012, CHT-007]
+    facts: [debtor_days, creditor_days, inventory_days, stock_ratio_3cd,
+            unpaid_43b_3cd, unpaid_43b_to_expenditure, borrowings_total,
+            turnover_3cd, np_ratio_3cd, cash_itr]
+    settled_themes: [trend, continuity]
+    correlate_with: [trade_cycle, credit_conditions, entity_event]
+    question: >-
+      Does the working capital cycle move consistently with the profit and turnover
+      reported, or does it point the other way?
+    rubric: >-
+      Receivable days lengthening while turnover rises and profit holds is the shape
+      of revenue recognised ahead of collection; stock days rising with a falling
+      gross margin is the shape of stock carried at a value the market no longer
+      supports; payable days and unpaid statutory dues rising together point at cash,
+      whatever the profit says. Say which of these shapes, if any, the years show,
+      and name the years. Where the cycle is stable, say so — a stable cycle
+      alongside a volatile margin is itself a finding, because one of the two is
+      unlikely to be right. Two observations are not a cycle; require three years.
+    authority: [ITA-145, FORM3CD-CL26]
+    severity: medium
+
+  - id: INF-004
+    topic: assets
+    title: Whether the movement in the blocks is consistent with the business
+    charts: [CHT-004, CHT-005]
+    facts: [dep_opening_wdv_3cd, dep_additions_3cd, dep_allowable_3cd,
+            dep_closing_wdv_3cd, effective_depreciation_rate, dep_claimed_itr,
+            fixed_assets_itr, turnover_3cd, capital_expenditure_3cd]
+    settled_themes: [continuity, arithmetic, tie_out]
+    correlate_with: [trade_cycle, entity_event]
+    question: >-
+      Is the pattern of additions to the blocks and the depreciation claimed
+      consistent with the turnover and the capital expenditure reported elsewhere?
+    rubric: >-
+      Additions that jump in a year should show somewhere else: in turnover in the
+      year after, in the capital expenditure reported under clause 21, in the fixed
+      assets in the balance sheet. Depreciation should move with the block, and the
+      effective rate should sit inside a narrow band unless the mix of blocks
+      changed. Report a year where the additions and the effect of the additions do
+      not correspond, and say which of the two you would test first. Where the
+      deterministic rules have already established a break in the written down value,
+      do not restate it; say what it implies for the years after it.
+    authority: [FORM3CD-CL18, ITA-32]
+    severity: high
+
+  - id: INF-005
+    topic: statutory
+    title: Whether the pattern of statutory default is deteriorating or being reported better
+    charts: [CHT-007, CHT-008]
+    facts: [unpaid_43b_3cd, unpaid_43b_preexisting_3cd, unpaid_43b_to_expenditure,
+            tds_payments_3cd, tds_deducted_3cd, tds_effective_rate,
+            tds_not_deposited_3cd, tds_interest_3cd, tds_interest_unpaid,
+            pf_employee_amount_3cd, pf_unpaid, total_expenditure_3cd]
+    settled_themes: [exposure, statutory, particulars]
+    correlate_with: [credit_conditions, statutory_change, entity_event]
+    question: >-
+      Across the years, is the picture of statutory dues and tax at source getting
+      worse, or is it being reported more completely than it used to be?
+    rubric: >-
+      The two look alike in a single year and quite different across five. A
+      deteriorating position shows as amounts rising as a share of expenditure with
+      the effective rate of deduction stable. Better reporting shows as heads
+      appearing for the first time while the amounts stay small relative to
+      expenditure, and often follows a change of accountant or a change in the form.
+      Say which of the two the years support, and say what would settle it — the
+      challans, the quarterly statements, the year in which the reporting changed.
+      Where a section began to apply in one of the years on file, according to the
+      context, treat a first-year figure as consistent with the change in law.
+    authority: [ITA-43B, ITA-43B-h, ITA-40a-ia, ITA-201-1A, ITA-36-1-va]
+    severity: high
+
+  - id: INF-006
+    topic: computation
+    title: What the gap between book profit and returned income is made of
+    charts: [CHT-011]
+    facts: [net_profit_itr, total_income_itr, gross_total_income_itr,
+            business_income_itr, taxable_to_book_profit, effective_tax_rate,
+            tax_payable_itr, chapter_via_itr, bf_loss_setoff_itr, cf_loss_itr,
+            unabsorbed_dep_itr, dep_claimed_itr, unpaid_43b_itr,
+            disallowance_40_itr, disallowance_37_itr]
+    settled_themes: [trend, continuity, tie_out]
+    correlate_with: [statutory_change, entity_event]
+    question: >-
+      Is the movement between the profit per the books and the income returned
+      accounted for by the adjustments reported, and does the tax borne follow from
+      the income returned?
+    rubric: >-
+      Reason about direction and order of magnitude, not to the rupee: the
+      adjustments in the brief are the ones reported, and the rest of the
+      computation is not in front of you. Say whether the reported disallowances,
+      depreciation and set-offs plausibly account for the gap in each year, and name
+      the year where they plainly do not. Where the effective rate of tax moves
+      without the income moving, name the candidates — a change of regime, a
+      brought-forward set-off, book profit taxation, a deduction claimed for the
+      first time — and say which document would settle which. Answer
+      INSUFFICIENT_EVIDENCE where the return for a year is not on file.
+    authority: [ITA-115JB, ITA-115BAA, ITA-72, ITA-32-2]
+    severity: medium
+
+  - id: INF-007
+    topic: consistency
+    title: What the disagreements between the two documents have in common
+    charts: [CHT-003, CHT-012]
+    facts: [turnover_3cd, turnover_itr, gst_turnover_itr, gst_turnover_gap,
+            gp_numerator_3cd, gross_profit_itr, np_numerator_3cd, net_profit_itr,
+            dep_allowable_3cd, dep_claimed_itr, unpaid_43b_3cd, unpaid_43b_itr,
+            stock_numerator_3cd, closing_stock_itr]
+    settled_themes: [tie_out, identity]
+    correlate_with: [statutory_change, entity_event]
+    question: >-
+      Taking the disagreements between the return and the audit report together, is
+      there a single explanation that accounts for most of them, or are they
+      unrelated?
+    rubric: >-
+      Look for a common cause rather than listing the differences again. A single
+      base difference — indirect taxes included in one document and not the other,
+      operating income classified differently, a group of transactions recognised in
+      one and not the other — often accounts for several tie-outs at once, and saying
+      so turns five questions into one. Where the differences point in different
+      directions and different years, say that they are unrelated, because that is a
+      materially different conclusion and leads to a different enquiry. Quantify what
+      a single explanation would have to be worth, from the cells given.
+    authority: [FORM3CD-CL40, ITA-145]
+    severity: high
+
+  - id: INF-008
+    topic: exposure
+    title: Where an assessment would begin, and what should be ready before it does
+    charts: [CHT-001, CHT-003, CHT-007, CHT-009, CHT-010]
+    facts: [turnover_3cd, gp_ratio_3cd, np_ratio_3cd, gst_turnover_gap,
+            unpaid_43b_3cd, tds_not_deposited_3cd, cash_disallowance_3cd,
+            loans_269ss_3cd, unregistered_expenditure_share, related_party_share,
+            effective_tax_rate, bf_loss_returned_3cd]
+    settled_themes: [tie_out, continuity, particulars, exposure, trend, arithmetic,
+                     coverage, identity, open]
+    correlate_with: [statutory_change, compliance_calendar, trade_cycle]
+    question: >-
+      On these filings alone, which matters could be raised without any information
+      the department does not already hold, in what order, and what document answers
+      each?
+    rubric: >-
+      Rank by how readily a matter could be raised from the filings themselves — a
+      figure that disagrees with another figure in the same papers, or with data
+      another authority already has, comes before anything requiring an enquiry. For
+      each, name the document that answers it. Do not speculate about the
+      department's intentions, do not estimate demands or penalties, and do not
+      characterise the assessee. Confine every sentence to the cells cited and the
+      findings already settled. Where the deterministic rules found nothing and the
+      series are unremarkable, say so: a clean file is a conclusion, and reporting it
+      is part of being trusted about the rest.
+    authority: [ITA-44AB, ITA-139-1, ITA-145]
+    severity: high

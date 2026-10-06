@@ -1,0 +1,21 @@
+[Unit]
+Description=__APP__ - __TITLE__ (nginx :__PUBLIC_PORT__ -> 127.0.0.1:__APP_PORT__)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=__APP__
+Group=__APP__
+WorkingDirectory=/var/www/__APP__/__WORKDIR__
+# Keys: the deploy writes /var/www/__APP__/.env (mode 600) from ~/GRCKEY/envs/__APP__.env.
+__ENVLINE__
+Environment=PYTHONUNBUFFERED=1
+# Loopback only; nginx on :__PUBLIC_PORT__ is the public door.
+ExecStart=/var/www/__APP__/.venv/bin/python __START__
+Restart=always
+RestartSec=5
+# Shared box (AnyGRC, Sahitya Sarada, other AA agents): cap the process.
+MemoryMax=__MEMMAX__
+
+[Install]
+WantedBy=multi-user.target

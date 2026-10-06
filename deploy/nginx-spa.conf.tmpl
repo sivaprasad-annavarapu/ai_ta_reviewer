@@ -1,0 +1,47 @@
+# __APP__ - public https://__PUBLIC_IP__:__PUBLIC_PORT__
+#   static frontend from __STATIC_DIR__ (built locally, shipped by the deploy)
+#   __API_PREFIX__ -> backend on 127.0.0.1:__APP_PORT__
+# Installed by deploy/remote-install.sh as /etc/nginx/sites-available/__APP__.
+# TLS: the shared AA-agent Let's Encrypt IP certificate (__CERT_DIR__),
+# renewed by aikosh-cert.timer. No other site is touched.
+server {
+    listen __PUBLIC_PORT__ ssl;
+    listen [::]:__PUBLIC_PORT__ ssl;
+    server_name __PUBLIC_IP__;
+    ssl_certificate     __CERT_DIR__/__PUBLIC_IP__.crt;
+    ssl_certificate_key __CERT_DIR__/__PUBLIC_IP__.key;
+
+    # A plain http:// request on this TLS port (nginx code 497) is sent to
+    # the https:// URL on the same port instead of a "400 Bad Request" page.
+    error_page 497 =301 https://$host:$server_port$request_uri;
+
+    client_max_body_size 50m;
+    root __STATIC_DIR__;
+    index index.html;
+
+    location __API_PREFIX__ {
+        proxy_pass http://127.0.0.1:__APP_PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+    }
+
+    # Hashed build assets can be cached hard; index.html must not be.
+    location /assets/ {
+        try_files $uri =404;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Single-page app: unknown paths fall back to index.html for the router.
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache";
+    }
+}

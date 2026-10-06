@@ -1,0 +1,19 @@
+# Pinned: an analysis must be reproducible, and a library that changes its
+# output between runs breaks that as surely as a model that changes its mind.
+#
+#     python3.12 -m venv .venv
+#     .venv/bin/python -m pip install -r requirements.txt
+#
+# Python 3.10 or later. Developed and tested against 3.12.
+
+anthropic==0.117.0
+PyYAML==6.0.2
+
+# Persistence. The binary wheel bundles libpq, so talking to a Postgres server
+# needs no system client installation.
+psycopg[binary]==3.2.3
+
+# A real Postgres shipped in a wheel, for development and for a single-machine
+# install: `python -m tfa.store.local start`. Not a deployment mechanism — on a
+# server, point TFA_DB_URL at a proper Postgres and leave this out.
+pgserver==0.1.4

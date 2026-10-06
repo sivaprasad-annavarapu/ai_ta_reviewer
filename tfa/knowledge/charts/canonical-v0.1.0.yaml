@@ -1,0 +1,308 @@
+# ---------------------------------------------------------------------------
+# The chart catalogue.
+#
+# A chart in this system is not decoration and not a rendering choice made at
+# the last minute. It is a declared view of the fact matrix: which series, in
+# which unit, over which years, with the note that says what a reader should
+# take from it. Because it is declared, three things follow:
+#
+#   * the same chart appears on the screen and in the report, from one source;
+#   * every point on it carries the cell it was drawn from, so a reader can go
+#     and look;
+#   * the inference layer is handed the *series*, not the picture. The model
+#     never sees an image. It sees the same numbers, abstracted into a brief,
+#     which is what makes an inference checkable against the chart a person is
+#     looking at.
+#
+# `report: true` puts the chart in the standard report section, in this order.
+#
+# kind:  line | bars | grouped | ratio | stacked
+# unit:  inr | pct | days | count
+# ---------------------------------------------------------------------------
+schema_version: 1
+version: 0.1.0
+
+groups:
+  - id: profitability
+    label: Trading and profitability
+  - id: tieout
+    label: The return against the audit report
+  - id: assets
+    label: Fixed assets and depreciation
+  - id: working_capital
+    label: Working capital
+  - id: statutory
+    label: Statutory dues and tax at source
+  - id: cash
+    label: Cash-linked heads
+  - id: composition
+    label: Composition of expenditure
+  - id: tax
+    label: Income and tax
+  - id: losses
+    label: Losses carried
+
+charts:
+
+  - id: CHT-001
+    title: Turnover, gross profit and net profit
+    group: profitability
+    kind: grouped
+    unit: inr
+    report: true
+    series:
+      - fact: turnover_3cd
+        label: Turnover
+      - fact: gp_numerator_3cd
+        label: Gross profit
+    overlay:
+      - fact: np_numerator_3cd
+        label: Net profit
+        unit: inr
+    note: >-
+      The two bars and the line should move together. Gross profit flattening while
+      turnover rises is a trading question; net profit falling while gross profit
+      holds is an expenditure question. Which of the two it is decides where the
+      enquiry goes, so the net profit line is carried on its own scale rather than
+      being flattened against turnover.
+
+  - id: CHT-002
+    title: Margins reported in the audit report
+    group: profitability
+    kind: ratio
+    unit: pct
+    report: true
+    series:
+      - fact: gp_ratio_3cd
+        label: Gross profit to turnover
+      - fact: np_ratio_3cd
+        label: Net profit to turnover
+      - fact: material_ratio_3cd
+        label: Material consumed to finished goods
+    note: >-
+      These are the ratios clause 40 requires and the ones compared against the
+      sector. A movement in the gross margin that is not accompanied by a movement
+      in material consumption is the pattern that most often has to be explained.
+
+  - id: CHT-003
+    title: Turnover as reported in each document
+    group: tieout
+    kind: grouped
+    unit: inr
+    report: true
+    series:
+      - fact: turnover_3cd
+        label: Audit report, clause 40
+      - fact: turnover_itr
+        label: Return, profit and loss account
+      - fact: gst_turnover_itr
+        label: Return, Schedule GST
+    note: >-
+      Three statements of one number, made by the same person for the same year. The
+      third is reconciled by the department against another department's data
+      without asking the assessee anything.
+
+  - id: CHT-004
+    title: Movement in the blocks of assets
+    group: assets
+    kind: line
+    unit: inr
+    report: true
+    series:
+      - fact: dep_opening_wdv_3cd
+        label: Opening written down value
+      - fact: dep_additions_3cd
+        label: Additions
+      - fact: dep_allowable_3cd
+        label: Depreciation allowable
+      - fact: dep_closing_wdv_3cd
+        label: Closing written down value
+    note: >-
+      Each year's closing value is the next year's opening value. A break between
+      them changes the allowance in every later year, so the chart is read across
+      the join rather than year by year.
+
+  - id: CHT-005
+    title: Effective rate of depreciation on the blocks
+    group: assets
+    kind: ratio
+    unit: pct
+    report: false
+    series:
+      - fact: effective_depreciation_rate
+        label: Depreciation to opening block plus additions
+    note: >-
+      A rate out of line with the other years usually means an asset was put into
+      the wrong block, or the half-year restriction was not applied.
+
+  - id: CHT-006
+    title: Working capital in days
+    group: working_capital
+    kind: line
+    unit: days
+    report: true
+    series:
+      - fact: debtor_days
+        label: Trade receivables
+      - fact: creditor_days
+        label: Trade payables
+      - fact: inventory_days
+        label: Inventories
+    note: >-
+      Receivable days lengthening while turnover rises is the shape of sales
+      recognised ahead of collection. Payable days lengthening alongside a rising
+      unpaid statutory liability is a cash flow question about the business.
+
+  - id: CHT-007
+    title: Statutory dues unpaid at the year end
+    group: statutory
+    kind: bars
+    unit: inr
+    report: true
+    series:
+      - fact: unpaid_43b_3cd
+        label: Unpaid under section 43B
+    overlay:
+      - fact: unpaid_43b_to_expenditure
+        label: Share of total expenditure
+        unit: pct
+    note: >-
+      The absolute figure grows with the business; the share does not. Reading the
+      two together separates growth from deterioration.
+
+  - id: CHT-008
+    title: Tax deducted at source
+    group: statutory
+    kind: line
+    unit: inr
+    report: true
+    series:
+      - fact: tds_payments_3cd
+        label: Payments liable to deduction
+      - fact: tds_deducted_3cd
+        label: Tax deducted
+      - fact: tds_not_deposited_3cd
+        label: Deducted and not deposited
+    overlay:
+      - fact: tds_effective_rate
+        label: Effective rate of deduction
+        unit: pct
+    note: >-
+      The effective rate should be stable where the mix of payments is stable. A
+      fall in it, or any amount in the third line, has a consequence under section
+      40(a)(ia) and section 201(1A).
+
+  - id: CHT-009
+    title: Cash-linked heads
+    group: cash
+    kind: bars
+    unit: inr
+    report: true
+    series:
+      - fact: cash_disallowance_3cd
+        label: Inadmissible under section 40A(3)
+      - fact: loans_269ss_3cd
+        label: Loans taken otherwise than by account payee instrument
+      - fact: repayments_269t_3cd
+        label: Repaid otherwise than by account payee instrument
+      - fact: receipts_269st_3cd
+        label: Receipts under section 269ST
+    note: >-
+      Each of these carries its own penalty, and each is reported by the auditor
+      rather than inferred. A head that appears after years of nil is either a
+      change in how the business pays or a change in what was being reported.
+
+  - id: CHT-010
+    title: Expenditure by the registration status of the payee
+    group: composition
+    kind: stacked
+    unit: inr
+    report: true
+    series:
+      - fact: expenditure_other_registered_3cd
+        label: Registered under GST
+      - fact: expenditure_exempt_3cd
+        label: Exempt supplies
+      - fact: expenditure_composition_3cd
+        label: Composition scheme
+      - fact: expenditure_unregistered_3cd
+        label: Not registered
+    overlay:
+      - fact: unregistered_expenditure_share
+        label: Unregistered share
+        unit: pct
+    note: >-
+      Clause 44. The unregistered share is where purchases without a counterparty on
+      record show up, and it is checkable against data the department already holds.
+
+  - id: CHT-011
+    title: Income returned and tax borne
+    group: tax
+    kind: line
+    unit: inr
+    report: true
+    series:
+      - fact: net_profit_itr
+        label: Profit per the books
+      - fact: total_income_itr
+        label: Total income returned
+    overlay:
+      - fact: tax_payable_itr
+        label: Tax payable (right)
+        unit: inr
+    note: >-
+      The gap between book profit and total income is the computation. Where the
+      gap widens, the reason is a deduction, a set-off or a disallowance, and each
+      is a document.
+
+  - id: CHT-012
+    title: Stock in trade
+    group: working_capital
+    kind: line
+    unit: inr
+    report: false
+    series:
+      - fact: stock_numerator_3cd
+        label: Stock in trade, audit report
+      - fact: closing_stock_itr
+        label: Closing stock, return
+    overlay:
+      - fact: stock_ratio_3cd
+        label: Stock to turnover
+        unit: pct
+    note: >-
+      Closing stock moves profit between two years, and the two documents give two
+      chances to state it differently.
+
+  - id: CHT-013
+    title: Payments to persons specified in section 40A(2)(b)
+    group: cash
+    kind: bars
+    unit: inr
+    report: false
+    series:
+      - fact: payments_40a2b_3cd
+        label: Payments to specified persons
+    overlay:
+      - fact: related_party_share
+        label: Share of total expenditure
+        unit: pct
+    note: >-
+      Disallowable to the extent excessive. A rising share invites that test.
+
+  - id: CHT-014
+    title: Losses and allowances carried
+    group: losses
+    kind: line
+    unit: inr
+    report: false
+    series:
+      - fact: bf_loss_returned_3cd
+        label: Brought forward, as returned
+      - fact: cf_loss_itr
+        label: Carried forward per the return
+      - fact: unabsorbed_dep_itr
+        label: Unabsorbed depreciation
+    note: >-
+      A balance that rises without an order of assessment behind it is the trace of
+      a restatement.

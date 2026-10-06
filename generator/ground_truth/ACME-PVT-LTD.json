@@ -1,0 +1,112 @@
+{
+  "client": "ACME-PVT-LTD",
+  "pan": "AABCA1234A",
+  "name": "Acme Industrial Pumps Private Limited",
+  "years": [
+    "AY 2021-22",
+    "AY 2022-23",
+    "AY 2023-24",
+    "AY 2024-25",
+    "AY 2025-26"
+  ],
+  "planted": [
+    {
+      "defect_id": "D-07",
+      "ay": "AY 2022-23",
+      "where": "clause 44 break-up",
+      "description": "The components of the expenditure break-up do not add up to the total expenditure stated in the same clause.",
+      "expected_rule": "GST-001"
+    },
+    {
+      "defect_id": "D-13",
+      "ay": "AY 2022-23",
+      "where": "attendance",
+      "description": "No return of income is present for this year, although an audit report for the year is.",
+      "expected_rule": "ATT-002"
+    },
+    {
+      "defect_id": "D-02",
+      "ay": "AY 2023-24",
+      "where": "clause 35 opening stock",
+      "description": "The opening stock in the quantitative details does not equal the closing stock reported for the preceding year.",
+      "expected_rule": "STK-001"
+    },
+    {
+      "defect_id": "D-03",
+      "ay": "AY 2023-24",
+      "where": "clause 40 preceding year turnover",
+      "description": "The preceding year's turnover stated in this report differs from the turnover this firm reported for that year in the report for that year.",
+      "expected_rule": "RAT-001"
+    },
+    {
+      "defect_id": "D-04",
+      "ay": "AY 2023-24",
+      "where": "clause 26 pre-existing liability",
+      "description": "No pre-existing 43B liability is reported although the preceding year's report showed a liability unpaid at the year end.",
+      "expected_rule": "STA-001"
+    },
+    {
+      "defect_id": "D-01",
+      "ay": "AY 2024-25",
+      "where": "clause 18 opening WDV",
+      "description": "The opening written down value reported does not equal the closing written down value reported for the preceding year; the block is overstated by 56,00,000.",
+      "expected_rule": "DEP-001"
+    },
+    {
+      "defect_id": "D-05",
+      "ay": "AY 2024-25",
+      "where": "clause 34 flag vs amount",
+      "description": "An amount of tax deducted and not paid to the credit of the Central Government is reported, while the particulars state that there was no default under Chapter XVII-B.",
+      "expected_rule": "PAR-002"
+    },
+    {
+      "defect_id": "D-09",
+      "ay": "AY 2024-25",
+      "where": "signing accountant",
+      "description": "The membership number of the accountant signing the report changes from this year onwards without the firm registration number changing.",
+      "expected_rule": "IDN-004"
+    },
+    {
+      "defect_id": "D-10",
+      "ay": "AY 2024-25",
+      "where": "turnover: return against audit report",
+      "description": "The turnover reported in the return is lower than the turnover reported in the audit report for the same year by 1,24,00,000.",
+      "expected_rule": "TIE-001"
+    },
+    {
+      "defect_id": "D-14",
+      "ay": "AY 2024-25",
+      "where": "turnover against GST turnover",
+      "description": "The turnover reported against the GST registration in Schedule GST is higher than the turnover credited in the profit and loss account, and the gap opens in this year.",
+      "expected_rule": "TIE-006"
+    },
+    {
+      "defect_id": "D-12",
+      "ay": "AY 2024-25",
+      "where": "sequence of the return and the report",
+      "description": "The return was created before the audit report it relies on was signed.",
+      "expected_rule": "IDN-003"
+    },
+    {
+      "defect_id": "D-06",
+      "ay": "AY 2025-26",
+      "where": "clause 21(d) flag vs amount",
+      "description": "An amount inadmissible under section 40A(3) is reported while the particulars state that no payment was covered by that section.",
+      "expected_rule": "PAR-001"
+    },
+    {
+      "defect_id": "D-08",
+      "ay": "AY 2025-26",
+      "where": "clause 32(a) brought forward loss",
+      "description": "The loss brought forward for assessment year 2020-21 is larger than the amount carried forward for the same year in the preceding year's report, with no order of assessment cited.",
+      "expected_rule": "LOS-001"
+    },
+    {
+      "defect_id": "D-11",
+      "ay": "AY 2025-26",
+      "where": "nature of business",
+      "description": "The business code reported in the return changes from the code reported in earlier years, while the audit report states that there was no change in the nature of the business.",
+      "expected_rule": "IDN-005"
+    }
+  ]
+}

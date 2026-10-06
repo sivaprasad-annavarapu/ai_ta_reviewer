@@ -1,0 +1,125 @@
+# ---------------------------------------------------------------------------
+# Period context — what else was true in each year.
+#
+# "Correlate the fall in margin with the trade cycle" is a reasonable question
+# to put to a model, and an unreasonable one to answer from its memory. What a
+# year was like is a fact, and a fact belongs in a file somebody maintains.
+#
+# Everything here is dated, sourced and short. It is quoted to the inference
+# layer as background, and the layer is told in terms that it may correlate
+# against these entries and must not invent others.
+#
+# Each entry is keyed on the assessment year whose previous year it describes,
+# because that is the year whose transactions the return reports.
+#
+# NOTE ON VERIFICATION. Like the authority pack, this file carries
+# `verified: false` until a person has checked the entry against the source
+# named. Until then an inference resting on it says so.
+# ---------------------------------------------------------------------------
+schema_version: 1
+id: IN-CONTEXT
+version: 1.0.0
+name: India — economic and statutory context by assessment year
+verification_status: unverified_draft
+
+# What a correlation may be drawn against. An inference citing anything outside
+# this list is rejected by the validator.
+factors:
+  - id: trade_cycle
+    label: The trade cycle and demand conditions
+  - id: statutory_change
+    label: A change in the law or in a filing requirement
+  - id: compliance_calendar
+    label: Due dates and the sequence in which filings had to be made
+  - id: input_costs
+    label: Movement in input costs
+  - id: credit_conditions
+    label: The cost and availability of credit
+  - id: entity_event
+    label: Something declared about the assessee itself
+
+periods:
+
+  - ay: AY 2021-22
+    fy: FY 2020-21
+    conditions: >-
+      The first full year affected by the covid-19 pandemic. A national lockdown
+      from late March 2020 suspended most non-essential trade for the first quarter
+      of the year, and demand recovered unevenly through the rest of it. Turnover
+      falling in this year, and a margin distorted by fixed costs carried through a
+      period of little or no activity, is the ordinary pattern rather than an
+      exception.
+    factors: [trade_cycle]
+    filing_notes: >-
+      Due dates for both the audit report and the return were extended repeatedly
+      through the year, so a filing that looks late against the ordinary calendar
+      may not have been.
+    verified: false
+
+  - ay: AY 2022-23
+    fy: FY 2021-22
+    conditions: >-
+      Recovery year. A second wave of the pandemic disrupted the first quarter, with
+      demand recovering from the second quarter onwards. Commodity and freight costs
+      rose sharply through the second half, compressing gross margins in
+      manufacturing and trading alike.
+    factors: [trade_cycle, input_costs]
+    verified: false
+
+  - ay: AY 2023-24
+    fy: FY 2022-23
+    conditions: >-
+      A year of normal trading conditions with elevated input costs early in the
+      year and a rising interest rate cycle through it. Nothing about the year
+      itself explains a discontinuity.
+    factors: [trade_cycle, input_costs, credit_conditions]
+    verified: false
+
+  - ay: AY 2024-25
+    fy: FY 2023-24
+    conditions: >-
+      Normal trading conditions. Input costs eased from the previous year's peaks;
+      interest rates stayed high through the year.
+    factors: [trade_cycle, input_costs, credit_conditions]
+    statutory_changes: >-
+      Section 43B(h) applies from this year: a sum payable to a micro or small
+      enterprise beyond the time limit in section 15 of the MSMED Act is allowable
+      only in the year of payment, and the proviso permitting payment by the return
+      due date does not save it. A first-year jump in disallowed or unpaid trade
+      payables is consistent with the change rather than with the business.
+    factors_extra: [statutory_change]
+    verified: false
+
+  - ay: AY 2025-26
+    fy: FY 2024-25
+    conditions: >-
+      Normal trading conditions.
+    factors: [trade_cycle]
+    verified: false
+
+# Statutory dates the inference layer may reason about. A date that is not here
+# is not a date the model may assert.
+calendar:
+  - ay: AY 2021-22
+    audit_report_due: 2022-02-15
+    return_due: 2022-03-15
+    note: as extended
+    verified: false
+  - ay: AY 2022-23
+    audit_report_due: 2022-09-30
+    return_due: 2022-11-07
+    note: as extended
+    verified: false
+  - ay: AY 2023-24
+    audit_report_due: 2023-09-30
+    return_due: 2023-10-31
+    verified: false
+  - ay: AY 2024-25
+    audit_report_due: 2024-09-30
+    return_due: 2024-11-15
+    note: as extended
+    verified: false
+  - ay: AY 2025-26
+    audit_report_due: 2025-09-30
+    return_due: 2025-10-31
+    verified: false

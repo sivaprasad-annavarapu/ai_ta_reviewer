@@ -1,0 +1,1264 @@
+# ---------------------------------------------------------------------------
+# The canonical rules — v0.1.0.
+#
+# This is the method. Every finding this system produces comes from one entry
+# here, and every entry names the provision it tests, how it is decided, what
+# it costs to be wrong about it, and what to ask next. Nothing is decided by a
+# rule that is not written down in this file.
+#
+# `method` is one of:
+#   rule    — decided by Python over the fact matrix, the same way every time
+#   llm     — put to model judgment against a rubric, with the provision quoted
+#   hybrid  — the rule runs first and prevails where it is definitive
+#
+# `for_each` instantiates a template:
+#   none       once for the whole client
+#   year       once per assessment year in the span
+#   year_pair  once per year that has a preceding year on file
+#
+# `requires` builds the dependency graph. A rule whose dependency was not
+# satisfied is skipped with the reason recorded — never re-derived, never
+# quietly assumed.
+#
+# `vulnerability` is what the matter exposes if it is left as it stands. It is
+# written for the reviewer, not for the client.
+# ---------------------------------------------------------------------------
+schema_version: 1
+version: 0.1.0
+authority_pack: IN-INCOMETAX
+
+themes:
+  - id: coverage
+    label: What is on the record
+  - id: identity
+    label: Identity of the assessee and of the filings
+  - id: tie_out
+    label: The return against the audit report
+  - id: continuity
+    label: One year carried into the next
+  - id: arithmetic
+    label: Internal arithmetic of the particulars
+  - id: particulars
+    label: Particulars answered against amounts reported
+  - id: trend
+    label: Movements across the years
+  - id: exposure
+    label: Amounts carrying a consequence under the Act
+  - id: judgment
+    label: Matters requiring judgment
+
+rules:
+
+  # ===================================================== coverage =========
+  - id: ATT-001
+    theme: coverage
+    question: Was every file in the client folder readable and identifiable?
+    method: rule
+    rule: all_files_readable
+    for_each: none
+    authority: [ITA-44AB]
+    severity: medium
+    vulnerability: >-
+      Every statement of the form "this was never reported" rests on the folder
+      having been read completely. A file left unread makes each of those
+      statements unsafe.
+
+  - id: ATT-002
+    theme: coverage
+    question: Is a return of income on file for the year?
+    method: rule
+    rule: return_present_for_year
+    for_each: year
+    authority: [ITA-139-1]
+    severity: high
+    vulnerability: >-
+      A year with an audit report and no return cannot be tied out at all, and a
+      missing return is itself the first thing an officer looks for.
+
+  - id: ATT-003
+    theme: coverage
+    question: Is a tax audit report on file for the year?
+    method: rule
+    rule: audit_report_present_for_year
+    for_each: year
+    authority: [ITA-44AB, RULE-6G]
+    severity: high
+    vulnerability: >-
+      Where the accounts were liable to audit, absence of the report on the
+      record leaves the penalty under section 271B unanswered and the
+      particulars for that year untested.
+
+  - id: ATT-004
+    theme: coverage
+    question: Are the years on file continuous, with no gap in the middle of the span?
+    method: rule
+    rule: no_missing_year_in_span
+    for_each: none
+    authority: [ITA-139-1]
+    severity: medium
+    requires: [ATT-001]
+    vulnerability: >-
+      A gap breaks every carried-forward figure across it: written down values,
+      unpaid statutory dues and losses cannot be traced through a year nobody has.
+
+  - id: ATT-005
+    theme: coverage
+    question: Is there exactly one operative filing of each kind for each year?
+    method: rule
+    rule: one_return_per_year
+    for_each: none
+    authority: [ITA-139-5]
+    severity: low
+    vulnerability: >-
+      Where two returns exist for one year and the wrong one is analysed, every
+      figure downstream is drawn from a superseded document.
+
+  - id: ATT-006
+    theme: coverage
+    question: Does every filing state an assessment year that can be read?
+    method: rule
+    rule: assessment_year_readable
+    for_each: none
+    authority: [ITA-139-1]
+    severity: medium
+    vulnerability: >-
+      A filing that cannot be attributed to a year takes no part in the analysis,
+      and its absence from the matrix is invisible unless it is reported here.
+
+  # ===================================================== identity =========
+  - id: IDN-001
+    theme: identity
+    question: Do all the filings relate to one assessee, on one permanent account number?
+    method: rule
+    rule: pan_consistent
+    for_each: none
+    authority: [ITA-139-1]
+    severity: high
+    requires: [ATT-001]
+    vulnerability: >-
+      Analysis across years is only meaningful if the years belong to the same
+      person. Two PANs in one folder invalidates every trend in this report.
+
+  - id: IDN-002
+    theme: identity
+    question: Is the assessee named consistently across the filings?
+    method: rule
+    rule: name_consistent
+    for_each: none
+    authority: [ITA-139-1]
+    severity: low
+    vulnerability: >-
+      A name change unrecorded in one document and recorded in another is a small
+      thing that makes a reconciliation look wrong when it is not.
+
+  - id: IDN-003
+    theme: identity
+    question: Was the audit report signed before the return that relies on it was prepared?
+    method: rule
+    rule: report_signed_before_return
+    for_each: year
+    authority: [ITA-44AB, ITA-139-1]
+    severity: medium
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      A return prepared before the report it certifies raises a question about
+      what the return was based on, and the dates are on the face of both files.
+
+  - id: IDN-004
+    theme: identity
+    question: Was the same accountant's membership number on every audit report?
+    method: rule
+    rule: signing_accountant_consistent
+    for_each: none
+    authority: [ITA-44AB, RULE-6G]
+    severity: low
+    vulnerability: >-
+      A change of signing accountant is ordinary, but it is also the point at
+      which the treatment of a recurring particular tends to change without
+      anyone saying so.
+
+  - id: IDN-005
+    theme: identity
+    question: >-
+      Does the business code in the return change in a year in which the audit
+      report reports no change in the nature of the business?
+    method: rule
+    rule: business_code_stable
+    for_each: none
+    authority: [FORM3CD-CL8A, ITA-139-1]
+    severity: medium
+    vulnerability: >-
+      The code drives the comparison the department's own systems make against
+      the sector. A code changed without a business change moves the assessee
+      into a different peer set for no reason on record.
+
+  - id: IDN-006
+    theme: identity
+    question: Do the indirect tax registrations reported carry forward between years?
+    method: rule
+    rule: registration_numbers_stable
+    for_each: none
+    authority: [FORM3CD-CL4]
+    severity: low
+    vulnerability: >-
+      A registration that disappears from the particulars without a surrender on
+      record leaves turnover reported to two authorities that no longer agree.
+
+  - id: IDN-007
+    theme: identity
+    question: Is the previous year stated in the audit report the year that assessment year assesses?
+    method: rule
+    rule: previous_year_matches_assessment_year
+    for_each: year
+    authority: [ITA-44AB, RULE-6G]
+    severity: high
+    requires: [ATT-003]
+    vulnerability: >-
+      A report filed against the wrong assessment year is treated as no report
+      for the right one.
+
+  - id: IDN-008
+    theme: identity
+    question: Does the audit report date stated in the return agree with the date on the report?
+    method: rule
+    rule: dates_agree
+    for_each: year
+    params:
+      left: signed_on_3cd
+      right: audit_date_itr
+    authority: [ITA-44AB, ITA-139-1]
+    severity: low
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      The date in the return is what the department reads first; a mismatch is a
+      question raised before anything substantive has been looked at.
+
+  - id: IDN-009
+    theme: identity
+    question: Does the auditor's membership number in the return agree with the one on the report?
+    method: rule
+    rule: values_agree_across_documents
+    for_each: year
+    params:
+      left: membership_no_3cd
+      right: auditor_membership_itr
+    authority: [ITA-44AB]
+    severity: low
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      Where the two disagree, the return points at an accountant who did not sign
+      the report attached to it.
+
+  # ====================================================== tie-outs ========
+  - id: TIE-001
+    theme: tie_out
+    question: Does the turnover in the return agree with the turnover in the audit report?
+    method: rule
+    rule: tie_out
+    for_each: year
+    params:
+      left: turnover_3cd
+      right: turnover_itr
+      subject: turnover
+      enquiry: >-
+        Reconcile the two. The usual causes are indirect taxes included in one
+        figure and not the other, scrap or other operating income classified
+        differently, and credit notes taken to one document only. Ask for the
+        reconciliation in writing, because this is the first figure an officer
+        compares.
+    authority: [FORM3CD-CL40, ITA-44AB, ITA-145]
+    severity: high
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      Turnover is the anchor of the whole file, and the two documents are filed
+      by the same person for the same year. A difference here supports an
+      addition of the difference and puts every other reconciliation in doubt.
+
+  - id: TIE-002
+    theme: tie_out
+    question: Does the depreciation allowable in the audit report agree with the depreciation claimed in the return?
+    method: rule
+    rule: tie_out
+    for_each: year
+    params:
+      left: dep_allowable_3cd
+      right: dep_claimed_itr
+      subject: depreciation
+    authority: [FORM3CD-CL18, ITA-32]
+    severity: high
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      Depreciation claimed above the allowable figure certified in the report is
+      a disallowance the file itself evidences, and it repeats in every later
+      year through the written down value.
+
+  - id: TIE-003
+    theme: tie_out
+    question: Does the net profit in the audit report agree with the profit before tax in the return?
+    method: rule
+    rule: tie_out
+    for_each: year
+    params:
+      left: np_numerator_3cd
+      right: net_profit_itr
+      subject: net profit
+    authority: [FORM3CD-CL40, ITA-145]
+    severity: high
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      Both figures are said to come from the same audited profit and loss
+      account. Where they differ, one of the two documents does not.
+
+  - id: TIE-004
+    theme: tie_out
+    question: Does the closing stock in the quantitative details agree with the inventories in the return?
+    method: rule
+    rule: tie_out
+    for_each: year
+    params:
+      left: stock_numerator_3cd
+      right: closing_stock_itr
+      subject: closing stock
+    authority: [FORM3CD-CL35, FORM3CD-CL14, ITA-145A]
+    severity: medium
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      Closing stock is the classic adjustment: it moves profit in this year and
+      the next, and the two documents give two chances to state it differently.
+
+  - id: TIE-005
+    theme: tie_out
+    question: Does the total expenditure in clause 44 agree with the total expenditure in the return?
+    method: rule
+    rule: tie_out
+    for_each: year
+    params:
+      left: total_expenditure_3cd
+      right: total_expenditure_itr
+      subject: total expenditure
+    authority: [FORM3CD-CL44]
+    severity: medium
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      Clause 44 is reconciled by the department against the returns filed under
+      the goods and services tax. A total that does not agree with the return
+      makes that comparison start from the wrong number.
+
+  # ==================================================== continuity ========
+  - id: DEP-001
+    theme: continuity
+    question: >-
+      Is the opening written down value the closing written down value of the
+      preceding year?
+    method: rule
+    rule: continuity
+    for_each: year_pair
+    params:
+      closing: dep_closing_wdv_3cd
+      opening: dep_opening_wdv_3cd
+      subject: written down value of the blocks
+      enquiry: >-
+        Ask for the block-wise reconciliation between the two years. An opening
+        value above the preceding closing value carries depreciation in every
+        later year that the earlier report does not support.
+    authority: [FORM3CD-CL18, ITA-32]
+    severity: high
+    requires: [ATT-003]
+    vulnerability: >-
+      The written down value is cumulative. A break of this kind is not a
+      one-year adjustment: it changes the allowance in every year that follows,
+      and the earlier report is the evidence against it.
+
+  - id: STK-001
+    theme: continuity
+    question: Is the opening stock the closing stock of the preceding year?
+    method: rule
+    rule: continuity
+    for_each: year_pair
+    params:
+      closing: qty_closing_stock_3cd
+      opening: qty_opening_stock_3cd
+      subject: stock
+      enquiry: >-
+        Ask what was restated. Opening stock reported lower than the preceding
+        closing stock increases this year's profit and reduces last year's, which
+        is exactly the shape a stock adjustment leaves.
+    authority: [FORM3CD-CL35, FORM3CD-CL14, ITA-145A]
+    severity: high
+    requires: [ATT-003]
+    vulnerability: >-
+      A discontinuity in stock moves profit between two years, and both years are
+      on the same record. It is among the most straightforward additions to make.
+
+  - id: STA-001
+    theme: continuity
+    question: >-
+      Does the pre-existing 43B liability equal the liability reported as unpaid
+      at the end of the preceding year?
+    method: rule
+    rule: continuity
+    for_each: year_pair
+    params:
+      closing: unpaid_43b_3cd
+      opening: unpaid_43b_preexisting_3cd
+      subject: liability under section 43B
+      enquiry: >-
+        Ask for the year-wise statement of statutory dues. Where the preceding
+        year's unpaid liability does not reappear, establish whether it was paid
+        before the return due date — and if so, whether the deduction was taken
+        in the right year.
+    authority: [FORM3CD-CL26, ITA-43B]
+    severity: high
+    requires: [ATT-003]
+    vulnerability: >-
+      A liability that disappears between two reports has either been paid,
+      remitted or written back. Each has a tax consequence and only one of them
+      is neutral.
+
+  - id: LOS-001
+    theme: continuity
+    question: >-
+      Is the loss brought forward no greater than the loss carried forward from
+      the preceding year?
+    method: rule
+    rule: carry_forward_not_increased
+    for_each: year_pair
+    authority: [FORM3CD-CL32, ITA-72, ITA-32-2]
+    severity: high
+    requires: [ATT-003]
+    vulnerability: >-
+      A loss inflated between two years shelters income in every year it is set
+      off against, and it is checkable against the department's own record of
+      what was determined.
+
+  - id: RAT-001
+    theme: continuity
+    question: >-
+      Does the preceding year's turnover shown as a comparative agree with the
+      turnover reported for that year at the time?
+    method: rule
+    rule: restated_comparative
+    for_each: year_pair
+    params:
+      comparative: turnover_prec_3cd
+      original: turnover_3cd
+      subject: turnover
+    authority: [FORM3CD-CL40]
+    severity: high
+    requires: [ATT-003]
+    vulnerability: >-
+      Clause 40 asks for last year's figures precisely so that the two reports
+      can be laid against each other. A comparative that has moved is a
+      restatement nobody disclosed.
+
+  - id: RAT-002
+    theme: continuity
+    question: >-
+      Does the preceding year's gross profit ratio shown as a comparative agree
+      with the ratio reported for that year at the time?
+    method: rule
+    rule: restated_comparative
+    for_each: year_pair
+    params:
+      comparative: gp_ratio_prec_3cd
+      original: gp_ratio_3cd
+      subject: gross profit ratio
+    authority: [FORM3CD-CL40]
+    severity: medium
+    requires: [ATT-003]
+    vulnerability: >-
+      A ratio restated between reports usually means the underlying figures were
+      restated too, and the earlier report is the one on the department's file.
+
+  # ==================================================== arithmetic ========
+  - id: ARI-001
+    theme: arithmetic
+    question: Do the depreciation particulars cast?
+    method: rule
+    rule: depreciation_arithmetic
+    for_each: year
+    authority: [FORM3CD-CL18, ITA-32]
+    severity: high
+    requires: [ATT-003]
+    vulnerability: >-
+      A block that does not cast means either the allowance or the closing value
+      is wrong, and both are relied on elsewhere.
+
+  - id: ARI-002
+    theme: arithmetic
+    question: Do the quantitative details reconcile?
+    method: rule
+    rule: quantitative_arithmetic
+    for_each: year
+    authority: [FORM3CD-CL35]
+    severity: medium
+    requires: [ATT-003]
+    vulnerability: >-
+      An unexplained residual in the quantities is the arithmetic form of stock
+      that cannot be accounted for.
+
+  - id: ARI-003
+    theme: arithmetic
+    question: Does the gross profit ratio follow from the numerator and denominator reported with it?
+    method: rule
+    rule: ratio_agrees_with_its_inputs
+    for_each: year
+    params:
+      ratio: gp_ratio_3cd
+      numerator: gp_numerator_3cd
+      denominator: turnover_3cd
+      subject: gross profit ratio
+    authority: [FORM3CD-CL40]
+    severity: medium
+    requires: [ATT-003]
+    vulnerability: >-
+      Where the stated ratio and its own inputs disagree, the ratio has been
+      computed on a base that is not disclosed.
+
+  - id: ARI-004
+    theme: arithmetic
+    question: Does the net profit ratio follow from the numerator and denominator reported with it?
+    method: rule
+    rule: ratio_agrees_with_its_inputs
+    for_each: year
+    params:
+      ratio: np_ratio_3cd
+      numerator: np_numerator_3cd
+      denominator: turnover_3cd
+      subject: net profit ratio
+    authority: [FORM3CD-CL40]
+    severity: medium
+    requires: [ATT-003]
+    vulnerability: >-
+      As above: the ratio is the figure that is compared against the sector, and
+      it must be the one the reported numbers give.
+
+  - id: GST-001
+    theme: arithmetic
+    question: Do the components of the clause 44 expenditure break-up add up to the total?
+    method: rule
+    rule: sums_to_total
+    for_each: year
+    params:
+      total: total_expenditure_3cd
+      parts: gst_components_total
+    authority: [FORM3CD-CL44]
+    severity: medium
+    requires: [ATT-003]
+    vulnerability: >-
+      This clause is reconciled against the goods and services tax returns. A
+      break-up that does not add up invites the reconciliation to be done by
+      someone else, on their numbers.
+
+  # =================================================== particulars ========
+  - id: PAR-001
+    theme: particulars
+    question: >-
+      Is the particular on payments under section 40A(3) consistent with the
+      amount reported against it?
+    method: rule
+    rule: flag_versus_amount
+    for_each: year
+    params:
+      flag: flag_40a3_3cd
+      amount: cash_disallowance_3cd
+      subject: payments covered by section 40A(3)
+    authority: [FORM3CD-CL21, ITA-40A3]
+    severity: high
+    requires: [ATT-003]
+    vulnerability: >-
+      A "no" beside a figure is a contradiction on the face of the form. It
+      cannot be explained as judgment, and it undermines the reliability of every
+      other particular answered the same way.
+
+  - id: PAR-002
+    theme: particulars
+    question: >-
+      Is the particular on default under Chapter XVII-B consistent with the
+      amount reported as not deposited?
+    method: rule
+    rule: flag_versus_amount
+    for_each: year
+    params:
+      flag: flag_tds_default_3cd
+      amount: tds_not_deposited_3cd
+      subject: default in deduction or payment of tax at source
+    authority: [FORM3CD-CL34, ITA-40a-ia, ITA-201-1A]
+    severity: high
+    requires: [ATT-003]
+    vulnerability: >-
+      The amount not deposited drives the disallowance under section 40(a)(ia)
+      and the interest under section 201(1A). A flag answered "no" beside it
+      does not remove either.
+
+  # ========================================================= trend ========
+  - id: TRD-001
+    theme: trend
+    question: Is there a step change in turnover between two consecutive years?
+    method: rule
+    rule: step_change
+    for_each: none
+    params:
+      fact: turnover_3cd
+    authority: [FORM3CD-CL40, ITA-44AB]
+    severity: medium
+    vulnerability: >-
+      A turnover that steps rather than grows is the movement the department's
+      own selection criteria look for first.
+
+  - id: TRD-002
+    theme: trend
+    question: Does the gross profit ratio shift materially between years?
+    method: rule
+    rule: ratio_shift
+    for_each: none
+    params:
+      fact: gp_ratio_3cd
+      enquiry: >-
+        Ask for the explanation and test it: a genuine fall in margin shows in
+        the material consumption ratio and in the stock ratio too. A fall that
+        appears only in gross profit is a fall in the reported figure, not in
+        the business.
+    authority: [FORM3CD-CL40, ITA-145]
+    severity: high
+    vulnerability: >-
+      A fall in gross profit with no corresponding movement elsewhere is the
+      single most common basis for an addition on estimate, and the ratios are
+      reported in the file itself.
+
+  - id: TRD-003
+    theme: trend
+    question: Does the net profit ratio shift materially between years?
+    method: rule
+    rule: ratio_shift
+    for_each: none
+    params:
+      fact: np_ratio_3cd
+    authority: [FORM3CD-CL40]
+    severity: medium
+    vulnerability: >-
+      Net profit falling faster than gross profit points at expenditure rather
+      than at trading, and directs where the questions will go.
+
+  - id: TRD-004
+    theme: trend
+    question: Do turnover and net profit move together?
+    method: rule
+    rule: divergence
+    for_each: none
+    params:
+      fact: net_profit_itr
+      against: turnover_itr
+    authority: [ITA-145]
+    severity: medium
+    vulnerability: >-
+      Rising turnover with falling profit is not by itself wrong, but it is the
+      pattern that most reliably attracts a question, and the answer should exist
+      before the question does.
+
+  - id: TRD-005
+    theme: trend
+    question: >-
+      Does the share of expenditure with entities not registered under GST move
+      sharply?
+    method: rule
+    rule: ratio_shift
+    for_each: none
+    params:
+      fact: unregistered_expenditure_share
+      threshold_param: ratio_material_shift_pct_points
+    authority: [FORM3CD-CL44]
+    severity: high
+    vulnerability: >-
+      A jump in unregistered expenditure is where purchases without a
+      counterparty on record show up. It is checkable against the goods and
+      services tax data the department already holds.
+
+  - id: TRD-006
+    theme: trend
+    question: Does the share of payments to specified persons move sharply?
+    method: rule
+    rule: ratio_shift
+    for_each: none
+    params:
+      fact: related_party_share
+    authority: [FORM3CD-CL23, ITA-40A2b]
+    severity: medium
+    vulnerability: >-
+      Payments to specified persons are disallowable to the extent they are
+      excessive. A step increase in their share invites that test to be applied.
+
+  - id: TRD-007
+    theme: trend
+    question: Do trade receivables in days of turnover deteriorate?
+    method: rule
+    rule: ratio_shift
+    for_each: none
+    params:
+      fact: debtor_days
+      threshold_param: debtor_days_shift
+    authority: [ITA-145]
+    severity: low
+    vulnerability: >-
+      Receivable days that lengthen while turnover rises are the shape of sales
+      recognised without collection behind them.
+
+  - id: TRD-008
+    theme: trend
+    question: Does the effective rate of depreciation on the blocks move out of line?
+    method: rule
+    rule: outlier_year
+    for_each: none
+    params:
+      fact: effective_depreciation_rate
+    authority: [FORM3CD-CL18, ITA-32]
+    severity: medium
+    vulnerability: >-
+      A rate out of line with the other years usually means an asset was put into
+      the wrong block or the half-year restriction was not applied.
+
+  - id: TRD-009
+    theme: trend
+    question: Does an amount inadmissible under section 40A(3) appear for the first time?
+    method: rule
+    rule: emergence
+    for_each: none
+    params:
+      fact: cash_disallowance_3cd
+    authority: [ITA-40A3, FORM3CD-CL21]
+    severity: medium
+    vulnerability: >-
+      Cash payments appearing after years of nil either reflect a change in how
+      the business pays or a change in what the report tests for.
+
+  - id: TRD-010
+    theme: trend
+    question: Do loans or deposits taken otherwise than by account payee instrument appear?
+    method: rule
+    rule: emergence
+    for_each: none
+    params:
+      fact: loans_269ss_3cd
+    authority: [ITA-269SS, FORM3CD-CL31]
+    severity: high
+    vulnerability: >-
+      Section 271D provides a penalty equal to the amount of the loan. The
+      particulars themselves are the evidence.
+
+  - id: TRD-011
+    theme: trend
+    question: Does the unpaid liability under section 43B grow out of line with the business?
+    method: rule
+    rule: outlier_year
+    for_each: none
+    params:
+      fact: unpaid_43b_to_expenditure
+    authority: [ITA-43B, FORM3CD-CL26]
+    severity: medium
+    vulnerability: >-
+      A rising unpaid statutory liability is a disallowance in the year it is
+      incurred and a cash flow question about the business at the same time.
+
+  - id: TRD-012
+    theme: trend
+    question: Is the effective rate of tax for a year out of line with the other years?
+    method: rule
+    rule: tax_rate_plausible
+    for_each: year
+    authority: [ITA-115JB, ITA-115BAA]
+    severity: medium
+    requires: [ATT-002]
+    vulnerability: >-
+      A year that bears materially less tax than its neighbours has a reason. It
+      is better to know the reason than to be asked for it.
+
+  # ====================================================== exposure ========
+  - id: EXP-001
+    theme: exposure
+    question: Is tax deducted but not paid to the credit of the Central Government?
+    method: rule
+    rule: amount_reported
+    for_each: year
+    params:
+      fact: tds_not_deposited_3cd
+      subject: tax deducted and not deposited
+      enquiry: >-
+        Obtain the challans and the date of payment. Where payment was made after
+        the due date under section 139(1), the disallowance under section 40(a)(ia)
+        applies for the year and the deduction moves to the year of payment.
+    authority: [FORM3CD-CL34, ITA-40a-ia, ITA-201-1A]
+    severity: high
+    requires: [ATT-003]
+    vulnerability: >-
+      This is an addition the file itself supports, with interest running from
+      the date of deduction and a further exposure under section 271C.
+
+  - id: EXP-002
+    theme: exposure
+    question: Is interest under section 201(1A) reported as payable and not paid?
+    method: rule
+    rule: amount_reported
+    for_each: year
+    params:
+      fact: tds_interest_unpaid
+      subject: interest under section 201(1A) reported and not paid
+    authority: [ITA-201-1A, FORM3CD-CL34]
+    severity: medium
+    requires: [ATT-003]
+    vulnerability: >-
+      Interest under this section must be paid before the statements of deduction
+      are furnished. Reported and unpaid is a default on the face of the report.
+
+  - id: EXP-003
+    theme: exposure
+    question: Are employee contributions to welfare funds received and not paid?
+    method: rule
+    rule: amount_reported
+    for_each: year
+    params:
+      fact: pf_unpaid
+      subject: employee contributions received and not paid to the fund
+      enquiry: >-
+        Obtain the challans with dates against each month's liability. Payment
+        after the due date under the relevant welfare law is not deductible at
+        all, and section 43B does not cure it.
+    authority: [ITA-36-1-va, FORM3CD-CL21]
+    severity: high
+    requires: [ATT-003]
+    vulnerability: >-
+      This disallowance is settled law and is applied by the processing system
+      itself, without an officer having to raise it.
+
+  - id: EXP-004
+    theme: exposure
+    question: Is a liability under section 43B unpaid at the year end?
+    method: rule
+    rule: amount_reported
+    for_each: year
+    params:
+      fact: unpaid_43b_3cd
+      subject: statutory dues unpaid at the year end
+      enquiry: >-
+        Establish which of these were paid before the due date for furnishing the
+        return. Those that were are deductible this year; those that were not
+        move to the year of payment, and dues to micro and small enterprises do
+        not get the benefit of the proviso at all.
+    authority: [ITA-43B, ITA-43B-h, FORM3CD-CL26, MSMED-S15]
+    severity: medium
+    requires: [ATT-003]
+    vulnerability: >-
+      The amount is reported by the auditor. Whether it was paid in time is a
+      fact with a document behind it, and the deduction stands or falls on it.
+
+  - id: EXP-005
+    theme: exposure
+    question: Are receipts covered by section 269ST reported?
+    method: rule
+    rule: amount_reported
+    for_each: year
+    params:
+      fact: receipts_269st_3cd
+      subject: receipts covered by section 269ST
+    authority: [ITA-269ST, FORM3CD-CL31]
+    severity: high
+    requires: [ATT-003]
+    vulnerability: >-
+      Section 271DA provides a penalty equal to the amount received.
+
+  - id: EXP-006
+    theme: exposure
+    question: Are loans or deposits repaid otherwise than by account payee instrument?
+    method: rule
+    rule: amount_reported
+    for_each: year
+    params:
+      fact: repayments_269t_3cd
+      subject: repayments otherwise than by account payee instrument
+    authority: [ITA-269T, FORM3CD-CL31]
+    severity: high
+    requires: [ATT-003]
+    vulnerability: >-
+      Section 271E provides a penalty equal to the amount repaid.
+
+  - id: EXP-007
+    theme: exposure
+    question: Is turnover above the audit threshold in a year with no audit report on file?
+    method: rule
+    rule: turnover_within_audit_threshold
+    for_each: year
+    authority: [ITA-44AB]
+    severity: high
+    requires: [ATT-002]
+    vulnerability: >-
+      Failure to obtain the report attracts a penalty under section 271B of
+      one half per cent of turnover, subject to the ceiling.
+
+  - id: EXP-008
+    theme: exposure
+    question: Is a loss brought forward from beyond the years the Act allows?
+    method: rule
+    rule: carry_forward_within_time
+    for_each: year
+    authority: [ITA-72, ITA-32-2, FORM3CD-CL32]
+    severity: medium
+    requires: [ATT-003]
+    vulnerability: >-
+      A business loss set off beyond the eighth year is disallowed outright; the
+      distinction from unabsorbed depreciation is the whole of the answer.
+
+  - id: EXP-009
+    theme: exposure
+    question: Is presumptive taxation claimed consistently across the years on file?
+    method: rule
+    rule: presumptive_consistent
+    for_each: none
+    authority: [ITA-44AD, ITA-44ADA]
+    severity: medium
+    vulnerability: >-
+      Declaring under section 44AD and then not doing so in a later year bars the
+      benefit for five years and requires audit in each of them.
+
+  - id: EXP-010
+    theme: exposure
+    question: Is book profit under section 115JB reported by a company?
+    method: rule
+    rule: book_profit_reported_for_company
+    for_each: year
+    authority: [ITA-115JB, ITA-115BAA]
+    severity: low
+    applicability: [is_company]
+    requires: [ATT-002]
+    vulnerability: >-
+      Where the concessional regime was not opted for, the minimum alternate tax
+      computation is required, and its absence is a computation not made.
+
+  # ====================================================== judgment ========
+  - id: JDG-001
+    theme: judgment
+    question: >-
+      Taking the years together, is the movement in gross and net margin
+      consistent with the movements in the other particulars reported for the
+      same years?
+    method: llm
+    for_each: none
+    authority: [FORM3CD-CL40, ITA-145]
+    severity: high
+    rubric: >-
+      Compare the movement in gross profit and net profit ratios against the
+      movements in the material consumption ratio, the stock ratio, the
+      expenditure ratio and the quantitative details for the same years. PASS
+      where a fall or rise in margin is accompanied by corresponding movements in
+      the inputs — a margin that falls because material consumption rose is
+      coherent. FAIL where the margin moves materially and nothing in the other
+      series moves with it, and say specifically which series should have moved
+      and did not. INSUFFICIENT_EVIDENCE where fewer than three years carry the
+      ratios, or where the supporting series are not reported. Do not infer a
+      reason for the movement; state whether the reported figures hang together.
+    scope:
+      groups: [ratios, pl, stock]
+      trends: true
+    vulnerability: >-
+      An incoherent margin movement is the case an officer builds an estimate on.
+      Knowing which series fails to corroborate it is the difference between
+      answering the question and being surprised by it.
+
+  - id: JDG-002
+    theme: judgment
+    question: >-
+      Do the particulars reported across the years suggest that a head has
+      stopped being reported rather than stopped occurring?
+    method: llm
+    for_each: none
+    authority: [FORM3CD-CL21, FORM3CD-CL26, FORM3CD-CL31, FORM3CD-CL34]
+    severity: medium
+    rubric: >-
+      Look at each head that is reported in some years and nil or absent in
+      others — cash payments, loans taken or repaid otherwise than by account
+      payee instrument, amounts under section 41, prior period items, related
+      party payments. PASS where the pattern is stable or where a head ceases in
+      a way the other figures explain. FAIL where a head that was reported
+      consistently disappears while the business itself continues at a similar
+      size, and name the head and the year it stopped. INSUFFICIENT_EVIDENCE
+      where fewer than three years are on file. A head reported as nil is a
+      statement; a head absent from the file is not — distinguish the two and say
+      which you are relying on.
+    scope:
+      groups: [disallowance, cash, statutory, tds]
+      trends: true
+    vulnerability: >-
+      A head that quietly stops being reported is either a change in the business
+      or a change in the diligence of the reporting, and only one of those is
+      answerable.
+
+  - id: JDG-003
+    theme: judgment
+    question: >-
+      On these filings, which matters would most likely be opened first if the
+      years were taken up for scrutiny, and what should be prepared now?
+    method: llm
+    for_each: none
+    authority: [ITA-44AB, ITA-145, FORM3CD-CL40]
+    severity: high
+    rubric: >-
+      You are given the findings this analysis has already produced, together with
+      the trends. Rank the matters by how readily each could be raised from the
+      filings alone — that is, without any information the department does not
+      already have — and for each say what document would answer it. PASS is not
+      a meaningful verdict for this question: answer FAIL where there is at least
+      one matter that could be raised from the face of the filings, and
+      INSUFFICIENT_EVIDENCE where there is not enough on file to say. Do not
+      speculate about the department's intentions, and do not characterise the
+      assessee. Confine yourself to what is in the cited cells.
+    scope:
+      groups: [ratios, disallowance, statutory, tds, cash, losses, computation]
+      trends: true
+      findings: true
+    vulnerability: >-
+      The list of what is answerable, and with which document, is the working
+      paper this whole analysis exists to produce.
+
+  - id: TIE-006
+    theme: tie_out
+    question: >-
+      Does the turnover in the return agree with the turnover reported against the
+      GST registrations in the same return?
+    method: rule
+    rule: tie_out
+    for_each: year
+    params:
+      left: turnover_itr
+      right: gst_turnover_itr
+      subject: turnover
+      left_label: in the profit and loss account in the return
+      right_label: in Schedule GST of the same return
+      enquiry: >-
+        Reconcile the two figures in the return itself. Schedule GST is compared by
+        the department against the goods and services tax returns without asking the
+        assessee anything, so the reconciliation — exempt supplies, schedule III
+        items, stock transfers, financial year against tax period — should exist
+        before the comparison is made elsewhere.
+    authority: [ITA-139-1, FORM3CD-CL4]
+    severity: high
+    requires: [ATT-002]
+    vulnerability: >-
+      This is the one figure in the return that another department can check on its
+      own data. A difference here is raised without any enquiry at all.
+
+  - id: TIE-007
+    theme: tie_out
+    question: Does the gross profit in the return agree with the gross profit in the audit report?
+    method: rule
+    rule: tie_out
+    for_each: year
+    params:
+      left: gp_numerator_3cd
+      right: gross_profit_itr
+      subject: gross profit
+    authority: [FORM3CD-CL40, ITA-145]
+    severity: high
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      Gross profit drives the ratio the department compares against the sector. Two
+      figures for it in the same year's papers is a difference that has to be
+      explained before the ratio can be defended.
+
+  - id: TIE-008
+    theme: tie_out
+    question: >-
+      Does the cash payment disallowance in the return agree with the amount in the
+      audit report?
+    method: rule
+    rule: tie_out
+    for_each: year
+    params:
+      left: cash_disallowance_3cd
+      right: cash_disallowance_itr
+      subject: disallowance under section 40A(3)
+    authority: [ITA-40A3, FORM3CD-CL21]
+    severity: high
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      Where the auditor reports a cash disallowance the return does not carry, the
+      addition is supported by the assessee's own audit report.
+
+  - id: TIE-009
+    theme: tie_out
+    question: >-
+      Do the payments to specified persons agree between the return and the audit
+      report?
+    method: rule
+    rule: tie_out
+    for_each: year
+    params:
+      left: payments_40a2b_3cd
+      right: payments_40a2b_itr
+      subject: payments to persons specified in section 40A(2)(b)
+    authority: [ITA-40A2b, FORM3CD-CL23]
+    severity: medium
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      A related-party payment reported in one document and not the other invites the
+      whole class of payments to be examined.
+
+  - id: TIE-010
+    theme: tie_out
+    question: >-
+      Does the unpaid liability under section 43B agree between the return and the
+      audit report?
+    method: rule
+    rule: tie_out
+    for_each: year
+    params:
+      left: unpaid_43b_3cd
+      right: unpaid_43b_itr
+      subject: sums unpaid under section 43B
+    authority: [ITA-43B, FORM3CD-CL26]
+    severity: high
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      The auditor's figure is the one the department starts from. A return that
+      carries less is a disallowance waiting to be made.
+
+  - id: TIE-011
+    theme: tie_out
+    question: >-
+      Does the closing stock quantity in the audit report agree with the quantity in
+      the return?
+    method: rule
+    rule: tie_out
+    for_each: year
+    params:
+      left: qty_closing_stock_3cd
+      right: qty_closing_stock_itr
+      subject: closing stock quantity
+      enquiry: >-
+        Compare the item-wise quantitative details in the two documents. Where the
+        totals differ, establish whether an item or a unit of measure was omitted
+        from one of them.
+    authority: [FORM3CD-CL35]
+    severity: medium
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      Quantities are the one part of the file that cannot be re-valued. A difference
+      in them is a difference in what was physically there.
+
+  - id: PAR-003
+    theme: particulars
+    question: >-
+      Do the return and the audit report agree on whether the method of accounting
+      changed during the year?
+    method: rule
+    rule: values_agree_across_documents
+    for_each: year
+    params:
+      left: flag_change_method_3cd
+      right: flag_change_method_itr
+      enquiry: >-
+        Establish whether there was a change. Where there was, the effect on the
+        profit has to be disclosed in both documents, and the year of change is the
+        year the comparison of every ratio breaks.
+    authority: [FORM3CD-CL13, ITA-145, ICDS-I]
+    severity: medium
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      A change in method not disclosed in both documents undermines the comparison
+      of every year against every other.
+
+  - id: STK-002
+    theme: continuity
+    question: >-
+      Is the opening stock in the return the closing stock of the preceding year's
+      return?
+    method: rule
+    rule: continuity
+    for_each: year_pair
+    params:
+      closing: closing_stock_itr
+      opening: opening_stock_itr
+      subject: stock per the trading account
+      enquiry: >-
+        Ask what was restated, and whether the restatement was carried into the
+        computation of the earlier year. Opening stock reported lower than the
+        preceding closing stock increases the profit of this year.
+    authority: [ITA-145A, FORM3CD-CL14]
+    severity: high
+    requires: [ATT-002]
+    vulnerability: >-
+      Stock moved between two years shifts profit between them, and both years are on
+      the same record.
+
+  - id: STK-003
+    theme: continuity
+    question: >-
+      Is the opening stock quantity in the return the closing quantity of the
+      preceding year?
+    method: rule
+    rule: continuity
+    for_each: year_pair
+    params:
+      closing: qty_closing_stock_itr
+      opening: qty_opening_stock_itr
+      subject: stock quantity per the quantitative details
+    authority: [FORM3CD-CL35]
+    severity: medium
+    requires: [ATT-002]
+    vulnerability: >-
+      A quantity that does not carry forward cannot be explained by valuation, which
+      is what makes it harder to answer than a difference in value.
+
+  - id: TRD-013
+    theme: trend
+    question: >-
+      Does the gap between turnover in the return and turnover reported under GST
+      move materially?
+    method: rule
+    rule: step_change
+    for_each: none
+    params:
+      fact: gst_turnover_gap
+      enquiry: >-
+        Ask for the year-wise reconciliation. A gap that is stable has a structural
+        explanation; a gap that moves has an event behind it.
+    authority: [ITA-139-1]
+    severity: medium
+    vulnerability: >-
+      The gap is computable by the department from data it already holds, for every
+      year at once.
+
+  - id: TRD-014
+    theme: trend
+    question: Does the share of gross profit taken as partners' remuneration move materially?
+    method: rule
+    rule: ratio_shift
+    for_each: none
+    params:
+      fact: partner_remuneration_share
+    authority: [ITA-40b]
+    severity: medium
+    applicability: [has_partners]
+    vulnerability: >-
+      Remuneration is deductible only within the limits computed on book profit and
+      only to working partners. A rising share invites both tests.
+
+  - id: TRD-015
+    theme: trend
+    question: Do the ratios in the audit report and the ratios computed from the return agree?
+    method: rule
+    rule: tie_out
+    for_each: year
+    params:
+      left: gp_ratio_3cd
+      right: gp_ratio_itr
+      subject: gross profit ratio
+      enquiry: >-
+        The two are computed from figures in two documents filed for the same year.
+        Establish which base each used — turnover with or without indirect taxes,
+        operating income included or not — and whether the same base was used in
+        every year.
+    authority: [FORM3CD-CL40]
+    severity: medium
+    requires: [ATT-002, ATT-003]
+    vulnerability: >-
+      Where the reported ratio and the computable ratio differ, the reported one is
+      the one on the department's file and the computable one is the one it will
+      recompute.

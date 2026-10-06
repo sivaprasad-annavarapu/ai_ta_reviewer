@@ -1,0 +1,346 @@
+# ---------------------------------------------------------------------------
+# The audit programme.
+#
+# Areas a tax audit of these years should cover, and what to do in each. An
+# area reaches the plan because something put it there: a rule that failed, a
+# movement that crossed a threshold, or an inference that named it. Nothing is
+# on the plan for its own sake, and an area that nothing put on the plan is
+# reported as not indicated — with the reason — rather than quietly dropped.
+#
+# `triggers` are what promote an area:
+#   rules       the canonical rule ids whose failure indicates this area
+#   themes      any failure within these themes indicates it
+#   facts       a material movement in any of these series indicates it
+#   inferences  an inference marked reportable indicates it
+#   always      true where the area is part of every programme
+#
+# `procedures` are the work. Each names the provision it addresses, so the plan
+# can be defended clause by clause.
+# ---------------------------------------------------------------------------
+schema_version: 1
+version: 0.1.0
+
+areas:
+
+  - id: AREA-REV
+    label: Revenue and turnover
+    order: 1
+    why: >-
+      Turnover anchors the file: the audit threshold, every ratio, and the
+      department's first comparison all rest on it, and it is stated three times in
+      the papers.
+    triggers:
+      rules: [TIE-001, TIE-006, TRD-001, RAT-001, ARI-003, TRD-013, TRD-015]
+      facts: [turnover_3cd, turnover_itr, gst_turnover_itr, gst_turnover_gap]
+      inferences: [INF-001, INF-007]
+      always: true
+    procedures:
+      - id: P-REV-01
+        text: >-
+          Reconcile turnover as reported in clause 40, in the profit and loss account
+          of the return, and in Schedule GST, for each year on file, and obtain the
+          reconciliation in writing.
+        authority: [FORM3CD-CL40, ITA-145]
+      - id: P-REV-02
+        text: >-
+          Agree the turnover for each year to the annual GST returns filed, and
+          identify the standing reasons for any difference — exempt supplies, schedule
+          III items, stock transfers, the difference between the financial year and
+          the tax period.
+        authority: [FORM3CD-CL4]
+      - id: P-REV-03
+        text: >-
+          Test cut-off at each year end: examine invoices and dispatch documents
+          either side of 31 March for the years where the margin moved, and confirm
+          the period in which they were recognised.
+        authority: [ITA-145]
+      - id: P-REV-04
+        text: >-
+          Where turnover is stated differently in the two documents, establish which
+          figure the audit report certified and whether the return was revised.
+        authority: [ITA-139-5]
+
+  - id: AREA-GP
+    label: Gross margin and stock valuation
+    order: 2
+    why: >-
+      A margin that moves without its inputs moving is the most common basis for an
+      addition on estimate, and closing stock is the adjustment that does it.
+    triggers:
+      rules: [TRD-002, TRD-003, ARI-002, STK-001, STK-002, STK-003, TIE-004, TIE-011]
+      facts: [gp_ratio_3cd, np_ratio_3cd, material_ratio_3cd, stock_ratio_3cd,
+              qty_shortage_3cd]
+      inferences: [INF-001, INF-003]
+    procedures:
+      - id: P-GP-01
+        text: >-
+          Obtain the working for the gross profit ratio of each year and confirm that
+          the same base was used throughout — turnover with or without indirect
+          taxes, operating income included or excluded.
+        authority: [FORM3CD-CL40]
+      - id: P-GP-02
+        text: >-
+          Obtain the method of valuation of closing stock for each year and confirm it
+          did not change; where it did, obtain the effect on profit and check it was
+          disclosed in both documents.
+        authority: [FORM3CD-CL14, ITA-145A]
+      - id: P-GP-03
+        text: >-
+          Reconcile the quantitative details across the years: opening, purchases,
+          consumption, sales, closing and shortage, item by item, and obtain an
+          explanation for any shortage of a size that would affect the margin.
+        authority: [FORM3CD-CL35]
+      - id: P-GP-04
+        text: >-
+          Test the valuation of the largest items in closing stock for the year in
+          which the margin moved, to invoices and to the basis of overhead absorption.
+        authority: [ITA-145A]
+
+  - id: AREA-EXP
+    label: Expenditure and its composition
+    order: 3
+    why: >-
+      Clause 44 is reconciled by the department against data another authority
+      already holds, and a shift in the composition of expenditure is where purchases
+      without a counterparty on record appear.
+    triggers:
+      rules: [GST-001, TRD-005, TIE-005, TRD-006, TIE-009]
+      facts: [total_expenditure_3cd, expenditure_unregistered_3cd,
+              unregistered_expenditure_share, payments_40a2b_3cd, related_party_share]
+      inferences: [INF-002]
+    procedures:
+      - id: P-EXP-01
+        text: >-
+          Obtain the working behind the clause 44 break-up for each year and confirm
+          the components add to the total expenditure stated; establish what any
+          unallocated balance represents.
+        authority: [FORM3CD-CL44]
+      - id: P-EXP-02
+        text: >-
+          For the year in which the unregistered share moved, obtain the ledger of
+          payments to unregistered payees and test the largest to invoices, the mode
+          of payment and the identity of the payee.
+        authority: [FORM3CD-CL44, ITA-40A3]
+      - id: P-EXP-03
+        text: >-
+          Obtain the list of persons specified under section 40A(2)(b) with the
+          payments to each, and satisfy yourself as to the basis on which the amounts
+          were determined.
+        authority: [ITA-40A2b, FORM3CD-CL23]
+
+  - id: AREA-CASH
+    label: Cash-linked transactions
+    order: 4
+    why: >-
+      Each of these heads carries its own penalty, the amounts are reported by the
+      auditor rather than inferred, and the penalty provisions do not depend on any
+      addition to income.
+    triggers:
+      rules: [PAR-001, TRD-009, TRD-010, EXP-005, EXP-006, TIE-008]
+      facts: [cash_disallowance_3cd, loans_269ss_3cd, repayments_269t_3cd,
+              receipts_269st_3cd]
+      inferences: [INF-002]
+    procedures:
+      - id: P-CASH-01
+        text: >-
+          Obtain the day-book extracts for the years in which cash payments were
+          reported, and test payments to a single person in a day against the section
+          40A(3) limit.
+        authority: [ITA-40A3]
+      - id: P-CASH-02
+        text: >-
+          For each loan or deposit accepted or repaid otherwise than by account payee
+          instrument, obtain the confirmation of the counterparty and the mode of
+          receipt, and quantify the exposure under sections 271D and 271E.
+        authority: [ITA-269SS, ITA-269T, FORM3CD-CL31]
+      - id: P-CASH-03
+        text: >-
+          Test receipts against section 269ST for the largest customers, including
+          receipts split across days for one transaction or one event.
+        authority: [ITA-269ST]
+
+  - id: AREA-DEP
+    label: Fixed assets and depreciation
+    order: 5
+    why: >-
+      The written down value is cumulative: an error in one year changes the
+      allowance in every year after it, and the earlier report is the evidence.
+    triggers:
+      rules: [DEP-001, ARI-001, TIE-002, TRD-008]
+      facts: [dep_opening_wdv_3cd, dep_closing_wdv_3cd, dep_additions_3cd,
+              effective_depreciation_rate]
+      inferences: [INF-004]
+    procedures:
+      - id: P-DEP-01
+        text: >-
+          Obtain the block-wise depreciation working for each year and agree the
+          opening written down value of each year to the closing value certified for
+          the year before.
+        authority: [FORM3CD-CL18, ITA-32]
+      - id: P-DEP-02
+        text: >-
+          For the additions of each year, test the date of being put to use and
+          confirm the half-year restriction was applied where it should have been.
+        authority: [ITA-32]
+      - id: P-DEP-03
+        text: >-
+          Reconcile the depreciation certified in clause 18 with the amount claimed in
+          the return for the same year, and identify the cause of any difference.
+        authority: [FORM3CD-CL18, ITA-32]
+      - id: P-DEP-04
+        text: >-
+          Examine the classification of the largest additions between blocks, and the
+          treatment of amounts debited to the profit and loss account that are capital
+          in nature.
+        authority: [FORM3CD-CL21]
+
+  - id: AREA-43B
+    label: Statutory dues and section 43B
+    order: 6
+    why: >-
+      The auditor reports the unpaid figure; whether it was paid in time is a fact
+      with a challan behind it, and the deduction stands or falls on that.
+    triggers:
+      rules: [EXP-004, STA-001, TRD-011, TIE-010, EXP-003]
+      facts: [unpaid_43b_3cd, unpaid_43b_preexisting_3cd, pf_unpaid,
+              unpaid_43b_to_expenditure]
+      inferences: [INF-005]
+    procedures:
+      - id: P-43B-01
+        text: >-
+          Obtain a head-wise statement of statutory dues for each year with the date
+          of payment against each, and establish which were paid on or before the due
+          date for furnishing the return of that year.
+        authority: [ITA-43B, FORM3CD-CL26]
+      - id: P-43B-02
+        text: >-
+          Trace the closing unpaid liability of each year into the pre-existing
+          liability reported for the year following, and obtain the reason for any
+          amount that does not carry forward.
+        authority: [FORM3CD-CL26, ITA-41-1]
+      - id: P-43B-03
+        text: >-
+          Identify amounts payable to micro and small enterprises and test them
+          against the time limit in section 15 of the MSMED Act; the proviso allowing
+          payment by the return due date does not apply to them.
+        authority: [ITA-43B-h, MSMED-S15]
+      - id: P-43B-04
+        text: >-
+          For employee contributions to welfare funds, obtain the challans with dates
+          against each month's liability and test them against the due date under the
+          relevant law.
+        authority: [ITA-36-1-va]
+
+  - id: AREA-TDS
+    label: Tax deducted at source
+    order: 7
+    why: >-
+      An amount deducted and not deposited is an addition the file itself supports,
+      with interest running and a further exposure under section 271C.
+    triggers:
+      rules: [EXP-001, EXP-002, PAR-002]
+      facts: [tds_not_deposited_3cd, tds_interest_unpaid, tds_effective_rate,
+              tds_short_rate_3cd]
+      inferences: [INF-005]
+    procedures:
+      - id: P-TDS-01
+        text: >-
+          Reconcile the payments liable to deduction in clause 34(a) with the
+          quarterly statements filed, section by section, for each year.
+        authority: [FORM3CD-CL34]
+      - id: P-TDS-02
+        text: >-
+          For amounts deducted and not deposited, obtain the challans and the dates of
+          payment, and compute the disallowance under section 40(a)(ia) and the
+          interest under section 201(1A).
+        authority: [ITA-40a-ia, ITA-201-1A]
+      - id: P-TDS-03
+        text: >-
+          Where the effective rate of deduction falls in a year, examine the mix of
+          payments and test whether any class of payment was left out of deduction
+          altogether.
+        authority: [FORM3CD-CL34]
+
+  - id: AREA-LOSS
+    label: Losses, allowances and set-off
+    order: 8
+    why: >-
+      A loss carried forward shelters income in every year it is set off against, and
+      the department has its own record of what was determined.
+    triggers:
+      rules: [LOS-001, EXP-008]
+      facts: [bf_loss_returned_3cd, bf_loss_assessed_3cd, cf_loss_itr,
+              unabsorbed_dep_itr, bf_loss_setoff_itr]
+      inferences: [INF-006]
+    procedures:
+      - id: P-LOSS-01
+        text: >-
+          Prepare a year-wise statement of losses and unabsorbed depreciation as
+          returned and as assessed, and agree the brought forward figure of each year
+          to the carried forward figure of the year before.
+        authority: [FORM3CD-CL32, ITA-72, ITA-32-2]
+      - id: P-LOSS-02
+        text: >-
+          Distinguish business loss from unabsorbed depreciation in each year: the
+          first lapses after eight assessment years and the second does not.
+        authority: [ITA-72, ITA-32-2]
+      - id: P-LOSS-03
+        text: >-
+          Where the assessee is a closely held company, confirm the shareholding test
+          in section 79 for each year in which a loss was set off.
+        authority: [ITA-79]
+
+  - id: AREA-COMP
+    label: Computation of income and the regime elected
+    order: 9
+    why: >-
+      A year that bears materially less tax than its neighbours has a reason, and it
+      is better to know the reason than to be asked for it.
+    triggers:
+      rules: [TRD-012, EXP-010, TIE-003, EXP-009]
+      facts: [effective_tax_rate, taxable_to_book_profit, total_income_itr,
+              book_profit_115jb_itr, chapter_via_itr]
+      inferences: [INF-006]
+    procedures:
+      - id: P-COMP-01
+        text: >-
+          Obtain the computation of income for each year and agree the profit per the
+          books to the income returned, adjustment by adjustment.
+        authority: [ITA-145]
+      - id: P-COMP-02
+        text: >-
+          Establish which taxation regime was elected, from which year, and whether
+          the election can be withdrawn; confirm the consequences were applied
+          consistently in every later year.
+        authority: [ITA-115BAA, FORM3CD-CL8A]
+      - id: P-COMP-03
+        text: >-
+          Where the company is not in a concessional regime, obtain the section 115JB
+          computation for each year and the credit position carried forward.
+        authority: [ITA-115JB]
+
+  - id: AREA-FILE
+    label: Completeness of the record and the filing sequence
+    order: 10
+    why: >-
+      Every conclusion above rests on the record being complete; a missing return or
+      an unread file makes each of them provisional.
+    triggers:
+      themes: [coverage, identity]
+      always: true
+    procedures:
+      - id: P-FILE-01
+        text: >-
+          Obtain the acknowledgement of the return and of the audit report for each
+          year, and check each against the specified date for that year.
+        authority: [ITA-139-1, ITA-44AB]
+      - id: P-FILE-02
+        text: >-
+          For any year where a filing is not on the record, establish whether it was
+          made, and obtain it.
+        authority: [ITA-139-1]
+      - id: P-FILE-03
+        text: >-
+          Where more than one return exists for a year, establish which is operative
+          and obtain the reason for the revision.
+        authority: [ITA-139-5]

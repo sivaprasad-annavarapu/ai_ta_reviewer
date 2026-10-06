@@ -1,0 +1,1582 @@
+# ---------------------------------------------------------------------------
+# The fact dictionary.
+#
+# One entry per canonical fact. Each says where to look for it in a return or
+# in an audit report, what kind of thing it is, and whether it belongs in the
+# trend analysis. The extractor tries `paths` in order first; if none resolve it
+# falls back to searching for a leaf named in `keys`, and records that it had
+# to. A fact that resolves neither way is *not available* — never zero.
+#
+# This file is meant to be edited. Real ITR JSON moves fields between schedules
+# from one assessment year to the next, and the honest way to handle that is a
+# list of candidate paths that a person can extend when they see a new one,
+# rather than a clever guess buried in code.
+#
+# kind:   money | ratio | count | date | text | flag | list
+# scope:  3cd | itr            (which document the fact is read from)
+# aggregate: first | sum | max | min | count | list | any_true
+# trend:  true where a series across years is meaningful
+# ---------------------------------------------------------------------------
+schema_version: 1
+version: 1.0.0
+
+groups:
+  - id: identity
+    label: Identity and filing
+  - id: pl
+    label: Profit and loss
+  - id: ratios
+    label: Ratios reported in the audit report
+  - id: depreciation
+    label: Depreciation
+  - id: disallowance
+    label: Disallowances and inadmissible amounts
+  - id: statutory
+    label: Statutory dues and 43B
+  - id: tds
+    label: Tax deducted at source
+  - id: cash
+    label: Cash transactions
+  - id: stock
+    label: Stock and quantitative details
+  - id: losses
+    label: Losses and unabsorbed depreciation
+  - id: computation
+    label: Computation of income and tax
+  - id: balance_sheet
+    label: Balance sheet
+  - id: flags
+    label: Particulars answered yes or no
+
+facts:
+
+  # ======================================================== identity =======
+  - id: name_3cd
+    label: Name of the assessee (audit report)
+    group: identity
+    scope: 3cd
+    kind: text
+    clause: "1"
+    paths: ["**.PartA.AssesseeName", "PartA.AssesseeName"]
+    keys: [NameOfAssessee, AssesseeName, SurNameOrOrgName]
+
+  - id: pan_3cd
+    label: PAN (audit report)
+    group: identity
+    scope: 3cd
+    kind: text
+    clause: "2"
+    paths: ["**.PartA.PAN", "PartA.PAN"]
+    keys: [PAN]
+
+  - id: status_3cd
+    label: Status code (audit report)
+    group: identity
+    scope: 3cd
+    kind: text
+    clause: "3"
+    paths: ["**.PartA.Status", "PartA.Status"]
+    keys: [Status]
+
+  - id: py_start_3cd
+    label: Previous year begins
+    group: identity
+    scope: 3cd
+    kind: date
+    paths: ["**.PartA.PartAStartDate", "PartA.PartAStartDate"]
+    keys: [PartAStartDate]
+
+  - id: py_end_3cd
+    label: Previous year ends
+    group: identity
+    scope: 3cd
+    kind: date
+    paths: ["**.PartA.PartAEndDate", "PartA.PartAEndDate"]
+    keys: [PartAEndDate]
+
+  - id: audit_clause_3cd
+    label: Clause of section 44AB under which the audit was required
+    group: identity
+    scope: 3cd
+    kind: list
+    clause: "44AB"
+    paths: ["**.PartA.Clause.*.ClauseNo", "PartA.Clause.*.ClauseNo"]
+    keys: [ClauseNo]
+    aggregate: list
+
+  - id: gstin_3cd
+    label: Indirect tax registration numbers
+    group: identity
+    scope: 3cd
+    kind: list
+    clause: "4"
+    paths: ["**.PartA.Form3cdIndirectTax.*.RegNo", "**.Form3cdIndirectTax.*.RegNo"]
+    keys: [RegNo, GSTIN]
+    aggregate: list
+
+  - id: signed_on_3cd
+    label: Date the audit report was signed
+    group: identity
+    scope: 3cd
+    kind: date
+    paths: ["**.OtherInformation1.Date", "OtherInformation1.Date", "**.OtherInformation2.Date"]
+    keys: [DateOfSigning, SigningDate]
+
+  - id: membership_no_3cd
+    label: Membership number of the signing accountant
+    group: identity
+    scope: 3cd
+    kind: text
+    paths: ["**.OtherInformation1.MembershipNo", "OtherInformation1.MembershipNo"]
+    keys: [MembershipNo, MembershipNumber]
+
+  - id: firm_reg_no_3cd
+    label: Firm registration number of the auditor
+    group: identity
+    scope: 3cd
+    kind: text
+    paths: ["**.OtherInformation1.FirmRegNum", "OtherInformation1.FirmRegNum"]
+    keys: [FirmRegNum, FRN]
+
+  - id: created_on_3cd
+    label: Date the audit report JSON was created
+    group: identity
+    scope: 3cd
+    kind: date
+    paths: ["**.CreationInfo.JSONCreationDate", "CreationInfo.JSONCreationDate"]
+    keys: [JSONCreationDate]
+
+  - id: books_maintained_3cd
+    label: Books of account maintained
+    group: identity
+    scope: 3cd
+    kind: list
+    clause: "11(b)"
+    paths: ["**.Form3cdBooksOfAccLst.*.BooksMaintained",
+            "**.Form3cdBooksOfAccLst.*.Form3cdBooksOfAccLstPK.BooksMaintained"]
+    keys: [BooksMaintained, BooksOfAccount]
+    aggregate: list
+
+  - id: method_of_accounting_3cd
+    label: Method of accounting employed
+    group: identity
+    scope: 3cd
+    kind: text
+    clause: "13(a)"
+    paths: ["**.Form3cdChngMethAccVal.MethodOfAcc", "**.PartA.MethodOfAcc"]
+    keys: [MethodOfAcc, MethodOfAccounting]
+
+  - id: presumptive_section_3cd
+    label: Section under which presumptive income is reported
+    group: identity
+    scope: 3cd
+    kind: list
+    clause: "12"
+    paths: ["**.Form3cdProfGainsPresum.*.SectionNo", "**.Form3cdProfGainsPresum.SectionNo"]
+    keys: [SectionNo]
+    aggregate: list
+
+  - id: presumptive_amount_3cd
+    label: Profit assessable on a presumptive basis
+    group: identity
+    scope: 3cd
+    kind: money
+    clause: "12"
+    trend: true
+    paths: ["**.Form3cdProfGainsPresum.*.Amount", "**.Form3cdProfGainsPresum.Amount"]
+    aggregate: sum
+
+  - id: name_itr
+    label: Name of the assessee (return)
+    group: identity
+    scope: itr
+    kind: text
+    paths: ["**.OrgFirmInfo.AssesseeName", "**.PersonalInfo.AssesseeName", "**.PartA_GEN1.AssesseeName"]
+    keys: [AssesseeName, NameOfAssessee, SurNameOrOrgName]
+
+  - id: pan_itr
+    label: PAN (return)
+    group: identity
+    scope: itr
+    kind: text
+    paths: ["**.OrgFirmInfo.PAN", "**.PersonalInfo.PAN", "**.PartA_GEN1.PAN"]
+    keys: [PAN]
+
+  - id: return_filed_section_itr
+    label: Section under which the return was filed
+    group: identity
+    scope: itr
+    kind: text
+    keys: [ReturnFileSec, IncomeTaxSec]
+    paths: ["**.FilingStatus.ReturnFileSec.IncomeTaxSec", "**.FilingStatus.ReturnFileSec"]
+  - id: return_filed_on_itr
+    label: Date the return JSON was created
+    group: identity
+    scope: itr
+    kind: date
+    paths: ["**.CreationInfo.JSONCreationDate"]
+    keys: [JSONCreationDate, FilingDate, DateOfFiling]
+
+  - id: audit_flag_itr
+    label: Return states that the accounts are liable to audit
+    group: identity
+    scope: itr
+    kind: flag
+    keys: [LiableSec44ABflg, LiableToAudit, AuditedByAccountantFlg]
+    paths: ["**.PartA_GEN2.LiableSec44ABflg", "**.AuditInfo.LiableToAudit"]
+  - id: audit_date_itr
+    label: Date of the audit report as stated in the return
+    group: identity
+    scope: itr
+    kind: date
+    keys: [AuditDate, AuditReportDate, AuditReportFurnishDate]
+    paths: ["**.AuditInfo.AuditDate", "**.AuditInfo.AuditReportFurnishDate", "**.AuditInfo.AuditReportDate"]
+  - id: auditor_membership_itr
+    label: Membership number of the auditor as stated in the return
+    group: identity
+    scope: itr
+    kind: text
+    keys: [AuditorMemNo, MembershipNo, MembNo]
+    paths: ["**.AuditInfo.AuditorMemNo", "**.AuditInfo.MembershipNo"]
+  - id: nature_of_business_itr
+    label: Business or profession code reported in the return
+    group: identity
+    scope: itr
+    kind: list
+    keys: [Code, BusinessCode, NatureOfBusiness]
+    within: NatureOfBusiness
+    aggregate: list
+
+  # ============================================================ ratios =====
+    paths: ["**.NatureOfBusiness.*.Code", "**.NatureOfBusiness.NatureOfBusiness.*.Code"]
+  - id: turnover_3cd
+    label: Total turnover reported in the audit report
+    group: ratios
+    scope: 3cd
+    kind: money
+    clause: "40"
+    trend: true
+    paths: ["**.Form3cdAccountingRatioCalculations.PrevYrProfTurnOvr.TotalTurnover"]
+    keys: [TotalTurnover]
+    within: PrevYrProfTurnOvr
+
+  - id: turnover_prec_3cd
+    label: Total turnover of the preceding year, as stated in this year's report
+    group: ratios
+    scope: 3cd
+    kind: money
+    clause: "40"
+    paths: ["**.Form3cdAccountingRatioCalculations.PrecPrevYrProfTurnOvr.TotalTurnover"]
+    keys: [TotalTurnover]
+    within: PrecPrevYrProfTurnOvr
+
+  - id: gp_ratio_3cd
+    label: Gross profit to turnover (%)
+    group: ratios
+    scope: 3cd
+    kind: ratio
+    clause: "40"
+    trend: true
+    paths: ["**.Form3cdAccountingRatioCalculations.PrevYrProfTurnOvr.GrossprofitTurnover"]
+    keys: [GrossprofitTurnover]
+    within: PrevYrProfTurnOvr
+
+  - id: gp_ratio_prec_3cd
+    label: Gross profit to turnover of the preceding year, as stated in this year's report
+    group: ratios
+    scope: 3cd
+    kind: ratio
+    clause: "40"
+    paths: ["**.Form3cdAccountingRatioCalculations.PrecPrevYrProfTurnOvr.GrossprofitTurnover"]
+    keys: [GrossprofitTurnover]
+    within: PrecPrevYrProfTurnOvr
+
+  - id: np_ratio_3cd
+    label: Net profit to turnover (%)
+    group: ratios
+    scope: 3cd
+    kind: ratio
+    clause: "40"
+    trend: true
+    paths: ["**.Form3cdAccountingRatioCalculations.PrevYrProfTurnOvr.NetprofitTurnover1"]
+    keys: [NetprofitTurnover1, NetprofitTurnover]
+    within: PrevYrProfTurnOvr
+
+  - id: np_ratio_prec_3cd
+    label: Net profit to turnover of the preceding year, as stated in this year's report
+    group: ratios
+    scope: 3cd
+    kind: ratio
+    clause: "40"
+    paths: ["**.Form3cdAccountingRatioCalculations.PrecPrevYrProfTurnOvr.NetprofitTurnover1"]
+    keys: [NetprofitTurnover1, NetprofitTurnover]
+    within: PrecPrevYrProfTurnOvr
+
+  - id: stock_ratio_3cd
+    label: Stock-in-trade to turnover (%)
+    group: ratios
+    scope: 3cd
+    kind: ratio
+    clause: "40"
+    trend: true
+    paths: ["**.Form3cdAccountingRatioCalculations.PrevYrProfTurnOvr.StockInTrade"]
+    keys: [StockInTrade]
+    within: PrevYrProfTurnOvr
+
+  - id: material_ratio_3cd
+    label: Material consumed to finished goods produced (%)
+    group: ratios
+    scope: 3cd
+    kind: ratio
+    clause: "40"
+    trend: true
+    paths: ["**.Form3cdAccountingRatioCalculations.PrevYrProfTurnOvr.MaterialconsumedFinishedgoods"]
+    keys: [MaterialconsumedFinishedgoods]
+    within: PrevYrProfTurnOvr
+
+  - id: gp_numerator_3cd
+    label: Gross profit (numerator of the ratio)
+    group: pl
+    scope: 3cd
+    kind: money
+    clause: "40"
+    trend: true
+    paths: ["**.Form3cdAccountingRatioCalculations.PrevYrProfTurnOvr.GrosProfNumertr"]
+    keys: [GrosProfNumertr]
+    within: PrevYrProfTurnOvr
+
+  - id: np_numerator_3cd
+    label: Net profit (numerator of the ratio)
+    group: pl
+    scope: 3cd
+    kind: money
+    clause: "40"
+    trend: true
+    paths: ["**.Form3cdAccountingRatioCalculations.PrevYrProfTurnOvr.NetProfNumertr"]
+    keys: [NetProfNumertr]
+    within: PrevYrProfTurnOvr
+
+  - id: stock_numerator_3cd
+    label: Stock in trade (numerator of the ratio)
+    group: stock
+    scope: 3cd
+    kind: money
+    clause: "40"
+    trend: true
+    paths: ["**.Form3cdAccountingRatioCalculations.PrevYrProfTurnOvr.StockTradeNmrtr"]
+    keys: [StockTradeNmrtr]
+    within: PrevYrProfTurnOvr
+
+  # ====================================================== depreciation =====
+  - id: dep_opening_wdv_3cd
+    label: Opening written down value, all blocks
+    group: depreciation
+    scope: 3cd
+    kind: money
+    clause: "18"
+    trend: true
+    paths: ["**.Form3cdDeprAllw.*.OpeningWDV"]
+    aggregate: sum
+
+  - id: dep_additions_3cd
+    label: Additions to the blocks during the year
+    group: depreciation
+    scope: 3cd
+    kind: money
+    clause: "18"
+    trend: true
+    paths: ["**.Form3cdDeprAllw.*.TotalPurchaseValue", "**.Form3cdDeprAllw.*.TotalPurchase"]
+    aggregate: sum
+
+  - id: dep_deductions_3cd
+    label: Deductions from the blocks during the year
+    group: depreciation
+    scope: 3cd
+    kind: money
+    clause: "18"
+    paths: ["**.Form3cdDeprAllw.*.TotalDeduction", "**.Form3cdDeprAllw.*.Deductions"]
+    aggregate: sum
+
+  - id: dep_allowable_3cd
+    label: Depreciation allowable, all blocks
+    group: depreciation
+    scope: 3cd
+    kind: money
+    clause: "18"
+    trend: true
+    paths: ["**.Form3cdDeprAllw.*.DepAllowable"]
+    aggregate: sum
+
+  - id: dep_closing_wdv_3cd
+    label: Closing written down value, all blocks
+    group: depreciation
+    scope: 3cd
+    kind: money
+    clause: "18"
+    trend: true
+    paths: ["**.Form3cdDeprAllw.*.WrittenDownVal"]
+    aggregate: sum
+
+  - id: dep_blocks_3cd
+    label: Number of blocks of assets reported
+    group: depreciation
+    scope: 3cd
+    kind: count
+    clause: "18"
+    paths: ["**.Form3cdDeprAllw.*.RateOfDep"]
+    aggregate: count
+
+  - id: dep_claimed_itr
+    label: Depreciation claimed in the return
+    group: depreciation
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotalDepreciation, TotDepreciationAllowable, TotDepreciation]
+
+  # ====================================================== disallowance =====
+    paths: ["**.ScheduleDEP.SummaryFromDeprSch.TotalDepreciation", "**.ScheduleDPM.TotDepreciationAllowable"]
+  - id: capital_expenditure_3cd
+    label: Capital expenditure debited to the profit and loss account
+    group: disallowance
+    scope: 3cd
+    kind: money
+    clause: "21(a)"
+    trend: true
+    paths: ["**.Form3cdDebPLExpnditure.*.Amount"]
+    aggregate: sum
+
+  - id: cash_disallowance_3cd
+    label: Amounts inadmissible under section 40A(3)
+    group: disallowance
+    scope: 3cd
+    kind: money
+    clause: "21(d)"
+    trend: true
+    paths: ["**.Form3cdIncomeUnderSec40A_3.PaymntSec40A_3A",
+            "**.ExpendSec40A_3.*.Amount"]
+    keys: [PaymntSec40A_3A]
+    aggregate: sum
+
+  - id: payments_40a2b_3cd
+    label: Payments to persons specified in section 40A(2)(b)
+    group: disallowance
+    scope: 3cd
+    kind: money
+    clause: "23"
+    trend: true
+    paths: ["**.Form3cdPymtSec40a2bDetail.*.Amount"]
+    aggregate: sum
+
+  - id: section_41_3cd
+    label: Amounts chargeable under section 41
+    group: disallowance
+    scope: 3cd
+    kind: money
+    clause: "25"
+    trend: true
+    paths: ["**.Form3cdProfGainsTaxSec41.*.Amount"]
+    aggregate: sum
+
+  - id: prior_period_3cd
+    label: Prior period income or expenditure in the profit and loss account
+    group: disallowance
+    scope: 3cd
+    kind: money
+    clause: "27(b)"
+    trend: true
+    paths: ["**.Form3cdIncExpPriorPlAcc.*.Amount"]
+    aggregate: sum
+
+  - id: amounts_not_credited_3cd
+    label: Amounts not credited to the profit and loss account
+    group: disallowance
+    scope: 3cd
+    kind: money
+    clause: "16"
+    paths: ["**.Form3cdAmtNotCredit.*.Amount",
+            "**.Form3cdAmtNotCredit.*.Form3cdAmtNotCreditPk.Amount"]
+    aggregate: sum
+
+  - id: pf_employee_amount_3cd
+    label: Employee contributions to welfare funds received
+    group: disallowance
+    scope: 3cd
+    kind: money
+    clause: "20(b)"
+    trend: true
+    paths: ["**.Form3cdEmpPfSuperann.*.Amount"]
+    aggregate: sum
+
+  - id: pf_employee_paid_3cd
+    label: Employee contributions actually paid
+    group: disallowance
+    scope: 3cd
+    kind: money
+    clause: "20(b)"
+    trend: true
+    paths: ["**.Form3cdEmpPfSuperann.*.ActualAmount"]
+    aggregate: sum
+
+  # ========================================================= statutory =====
+  - id: unpaid_43b_3cd
+    label: Sums under section 43B unpaid at the year end
+    group: statutory
+    scope: 3cd
+    kind: money
+    clause: "26"
+    trend: true
+    paths: ["**.Form3cdUnpaidStrySec43b.*.Amount"]
+    aggregate: sum
+
+  - id: unpaid_43b_preexisting_3cd
+    label: Section 43B liability pre-existing on the first day of the previous year
+    group: statutory
+    scope: 3cd
+    kind: money
+    clause: "26(A)"
+    trend: true
+    paths: ["**.Form3cdUnpaidStrySec43b1.*.Amount",
+            "**.Form3cdUnpaidStrySec43bInfo.*.Amount"]
+    aggregate: sum
+
+  # =============================================================== tds =====
+  - id: tds_payments_3cd
+    label: Payments on which tax was deductible
+    group: tds
+    scope: 3cd
+    kind: money
+    clause: "34(a)"
+    trend: true
+    paths: ["**.Form3cdChapXVII.*.AmtOfNatureSpec"]
+    aggregate: sum
+
+  - id: tds_deducted_3cd
+    label: Tax deducted or collected
+    group: tds
+    scope: 3cd
+    kind: money
+    clause: "34(a)"
+    trend: true
+    paths: ["**.Form3cdChapXVII.*.TotTaxDedCollectd"]
+    aggregate: sum
+
+  - id: tds_short_rate_3cd
+    label: Amount on which tax was deducted at less than the specified rate
+    group: tds
+    scope: 3cd
+    kind: money
+    clause: "34(a)"
+    paths: ["**.Form3cdChapXVII.*.TotLessThanSpecRate"]
+    aggregate: sum
+
+  - id: tds_not_deposited_3cd
+    label: Tax deducted but not paid to the credit of the Central Government
+    group: tds
+    scope: 3cd
+    kind: money
+    clause: "34(a)"
+    trend: true
+    paths: ["**.Form3cdChapXVII.*.AmtNotDepToGovt"]
+    aggregate: sum
+
+  - id: tds_interest_3cd
+    label: Interest payable under section 201(1A) or 206C(7)
+    group: tds
+    scope: 3cd
+    kind: money
+    clause: "34(c)"
+    trend: true
+    paths: ["**.Form3cdSec2011A206C7.*.AmtOfIntrest",
+            "**.Form3cdSec2011A206C7.AmtOfIntrest"]
+    aggregate: sum
+
+  - id: tds_interest_paid_3cd
+    label: Interest under section 201(1A) actually paid
+    group: tds
+    scope: 3cd
+    kind: money
+    clause: "34(c)"
+    paths: ["**.Form3cdSec2011A206C7.*.AmtPaid", "**.Form3cdSec2011A206C7.AmtPaid"]
+    aggregate: sum
+
+  - id: tds_statements_late_3cd
+    label: Statements of deduction not furnished within time
+    group: tds
+    scope: 3cd
+    kind: count
+    clause: "34(b)"
+    paths: ["**.Form3cdTaxDedCollect.*.TransactionsFlag"]
+    aggregate: count
+
+  # ============================================================== cash =====
+  - id: loans_269ss_3cd
+    label: Loans or deposits accepted otherwise than by account payee instrument
+    group: cash
+    scope: 3cd
+    kind: money
+    clause: "31(a)"
+    trend: true
+    paths: ["**.Form3cdSec269SSDtls.*.AmtAccepted",
+            "**.Form3cdAmtSec269ssDetail.*.AmtAccepted"]
+    aggregate: sum
+
+  - id: repayments_269t_3cd
+    label: Loans or deposits repaid otherwise than by account payee instrument
+    group: cash
+    scope: 3cd
+    kind: money
+    clause: "31(c)"
+    trend: true
+    paths: ["**.Form3cdSec269TDtls.*.AmtRepaid",
+            "**.Form3cdSec269TNewDtls.*.AmtRepaid",
+            "**.Form3cdAmtSec269tDetail.*.AmtRepaid"]
+    keys: [AmtRepaid, AmountRepaid]
+    aggregate: sum
+
+  - id: receipts_269st_3cd
+    label: Receipts covered by section 269ST
+    group: cash
+    scope: 3cd
+    kind: money
+    clause: "31(ba)"
+    trend: true
+    paths: ["**.Form3cdSec269ST31ba.*.Amount", "**.Form3cdSec269ST31bb.*.Amount"]
+    aggregate: sum
+
+  # ============================================================= stock =====
+  - id: qty_opening_stock_3cd
+    label: Opening stock, quantitative details
+    group: stock
+    scope: 3cd
+    kind: count
+    clause: "35"
+    trend: true
+    paths: ["**.Form3cdTradeRawProdDet.*.OpeningStock"]
+    aggregate: sum
+    note: >-
+      Clause 35 is quantitative. These are units of the item, not rupees,
+      which is why they are not measured against the rupee materiality
+      floor and are not tied out against a value in the balance sheet.
+  - id: qty_purchases_3cd
+    label: Purchases, quantitative details
+    group: stock
+    scope: 3cd
+    kind: count
+    clause: "35"
+    trend: true
+    paths: ["**.Form3cdTradeRawProdDet.*.PurchasePy"]
+    aggregate: sum
+    note: >-
+      Clause 35 is quantitative. These are units of the item, not rupees,
+      which is why they are not measured against the rupee materiality
+      floor and are not tied out against a value in the balance sheet.
+  - id: qty_sales_3cd
+    label: Sales, quantitative details
+    group: stock
+    scope: 3cd
+    kind: count
+    clause: "35"
+    trend: true
+    paths: ["**.Form3cdTradeRawProdDet.*.SalesDurPy"]
+    aggregate: sum
+    note: >-
+      Clause 35 is quantitative. These are units of the item, not rupees,
+      which is why they are not measured against the rupee materiality
+      floor and are not tied out against a value in the balance sheet.
+  - id: qty_closing_stock_3cd
+    label: Closing stock, quantitative details
+    group: stock
+    scope: 3cd
+    kind: count
+    clause: "35"
+    trend: true
+    paths: ["**.Form3cdTradeRawProdDet.*.ClosingStock"]
+    aggregate: sum
+    note: >-
+      Clause 35 is quantitative. These are units of the item, not rupees,
+      which is why they are not measured against the rupee materiality
+      floor and are not tied out against a value in the balance sheet.
+  - id: qty_shortage_3cd
+    label: Shortage or excess, quantitative details
+    group: stock
+    scope: 3cd
+    kind: count
+    clause: "35"
+    trend: true
+    paths: ["**.Form3cdTradeRawProdDet.*.ShortageExcess"]
+    aggregate: sum
+
+  # ============================================================ losses =====
+    note: >-
+      Clause 35 is quantitative. These are units of the item, not rupees,
+      which is why they are not measured against the rupee materiality
+      floor and are not tied out against a value in the balance sheet.
+  - id: bf_loss_returned_3cd
+    label: Brought forward loss or depreciation as returned
+    group: losses
+    scope: 3cd
+    kind: money
+    clause: "32(a)"
+    trend: true
+    paths: ["**.Form3cdBflDa.*.AmtReturned"]
+    aggregate: sum
+
+  - id: bf_loss_assessed_3cd
+    label: Brought forward loss or depreciation as assessed
+    group: losses
+    scope: 3cd
+    kind: money
+    clause: "32(a)"
+    trend: true
+    paths: ["**.Form3cdBflDa.*.AmtAssessed"]
+    aggregate: sum
+
+  - id: bf_loss_years_3cd
+    label: Assessment years for which a loss is carried
+    group: losses
+    scope: 3cd
+    kind: list
+    clause: "32(a)"
+    paths: ["**.Form3cdBflDa.*.AssessmentYear"]
+    aggregate: list
+
+  - id: cf_loss_itr
+    label: Loss carried forward to future years, per the return
+    group: losses
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotalLossCF, TotLossCF]
+    paths: ["**.ScheduleCFL.TotalLossCFSummary.LossSummaryDetail.TotalLossCF", "**.TotalLossCFSummary.LossSummaryDetail.BusLossOthThanSpecLossCF"]
+  - id: unabsorbed_dep_itr
+    label: Unabsorbed depreciation carried forward
+    group: losses
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotDepritBalCFNY, UnabsorbedDepreciation]
+    paths: ["**.ITRScheduleUD.TotDepritBalCFNY", "**.ScheduleUD.TotDepritBalCFNY"]
+  - id: bf_loss_setoff_itr
+    label: Brought forward loss set off during the year
+    group: losses
+    scope: itr
+    kind: money
+    trend: true
+    keys: [BroughtFwdLossesSetoff, TotalBFLossSetOff, TotalBFLossSetoff]
+
+  # ======================================================= computation =====
+    paths: ["**.PartB-TI.BroughtFwdLossesSetoff", "**.ScheduleBFLA.TotalBFLossSetOff"]
+  - id: turnover_itr
+    label: Turnover or gross receipts reported in the return
+    group: pl
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotRevenueFrmOperations, SalesGrossReceiptsTotal, TotRevenueFromOperations, GrossReceipts, SalesGrossReceiptsOfBusiness]
+    paths: ["**.TradingAccount.TotRevenueFrmOperations", "**.TradingAccount.SalesGrossReceiptsTotal", "**.CreditsToPL.TotRevenueFromOperations", "**.TradingAccount.SaleOfGoods"]
+  - id: other_income_itr
+    label: Other income reported in the return
+    group: pl
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotOthIncome, TotOtherIncome, TotalOtherIncome]
+    paths: ["**.CreditsToPL.OthIncome.TotOthIncome", "**.CreditsToPL.TotOtherIncome", "**.TradingAccount.OperatingRevenueTotal"]
+  - id: total_expenditure_itr
+    label: Total expenditure reported in the return
+    group: pl
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotDebitsToPL, TotalExpenditure, TotExpenditure]
+    paths: ["**.PARTA_PL.DebitsToPL.TotDebitsToPL", "**.DebitsToPL.TotalExpenditure", "**.DebitsToPL.DebitPlAcnt.TotExpenditure"]
+  - id: net_profit_itr
+    label: Net profit before tax per the return
+    group: pl
+    scope: itr
+    kind: money
+    trend: true
+    keys: [ProfitBeforeTax, NetProfitOrLoss, NetProfitBeforeTax]
+    paths: ["**.PARTA_PL.ProfitBeforeTax", "**.PartA_PL.ProfitBeforeTax", "**.PARTA_PL.NetProfitOrLoss", "**.PartA_PL.NetProfitOrLoss", "**.DebitsToPL.TaxProvAppr.ProfitAfterTax"]
+  - id: gross_total_income_itr
+    label: Gross total income
+    group: computation
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.PartB-TI.GrossTotalIncome", "**.PartB_TI.GrossTotalIncome"]
+    keys: [GrossTotalIncome]
+
+  - id: total_income_itr
+    label: Total income
+    group: computation
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.PartB-TI.TotalIncome", "**.PartB_TI.TotalIncome", "**.PartB-TI.TotalTI"]
+    keys: [TotalTI, TotalIncome]
+    within: PartB_TI
+
+  - id: business_income_itr
+    label: Income from business or profession
+    group: computation
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.PartB-TI.ProfBusGain.TotProfBusGain", "**.PartB_TI.ProfBusGain.TotProfBusGain"]
+    keys: [TotProfBusGain]
+
+  - id: chapter_via_itr
+    label: Deductions under Chapter VI-A
+    group: computation
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.PartB-TI.DeductionsUnderScheduleVIA", "**.PartB_TI.DeductionsUnderScheduleVIA"]
+    keys: [DeductionsUnderScheduleVIA, TotalChapVIADeductions]
+
+  - id: book_profit_115jb_itr
+    label: Book profit under section 115JB
+    group: computation
+    scope: itr
+    kind: money
+    trend: true
+    keys: [BookProfitUs115JB, TotalBookProfit]
+    paths: ["**.ScheduleAMT.NormalTaxPayable", "**.PartB_TTI.BookProfitUs115JB", "**.ScheduleMAT.BookProfitUs115JB"]
+  - id: tax_payable_itr
+    label: Total tax payable
+    group: computation
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.ComputationOfTaxLiability.NetTaxLiability", "**.PartB_TTI.NetTaxLiability", "**.ComputationOfTaxLiability.GrossTaxPayable"]
+    keys: [NetTaxLiability, GrossTaxPayable, TotalTaxPayable]
+
+  - id: tds_credit_itr
+    label: Credit for tax deducted at source claimed in the return
+    group: computation
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.TaxPaid.TaxesPaid.TDS"]
+    keys: [TotalTDS]
+
+  - id: advance_tax_itr
+    label: Advance tax paid
+    group: computation
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.TaxPaid.TaxesPaid.AdvanceTax"]
+    keys: [AdvanceTax]
+
+  - id: self_assessment_tax_itr
+    label: Self-assessment tax paid
+    group: computation
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.TaxPaid.TaxesPaid.SelfAssessmentTax"]
+    keys: [SelfAssessmentTax]
+
+  - id: refund_itr
+    label: Refund claimed
+    group: computation
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.Refund.RefundDue"]
+    keys: [RefundDue]
+
+  # ===================================================== balance sheet =====
+  - id: capital_itr
+    label: Capital or share capital
+    group: balance_sheet
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotPartnerOrMemberFund, TotalShareCapital, ShareCapital]
+    paths: ["**.FundSrc.PartnerOrMemberFund.TotPartnerOrMemberFund", "**.SourcesOfFunds.ShareholderFund.TotalShareCapital"]
+  - id: reserves_itr
+    label: Reserves and surplus
+    group: balance_sheet
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotResrNSurp, TotalReservesAndSurplus, ReservesAndSurplus]
+    paths: ["**.PartnerOrMemberFund.ResrNSurp.TotResrNSurp", "**.ShareholderFund.TotalReservesAndSurplus"]
+  - id: secured_loans_itr
+    label: Secured loans / long-term borrowings
+    group: balance_sheet
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotSecrLoan, TotalLongTermBorrowings, SecuredLoan]
+    paths: ["**.LoanFunds.SecrLoan.TotSecrLoan", "**.LoanFunds.TotalLongTermBorrowings"]
+  - id: unsecured_loans_itr
+    label: Unsecured loans / short-term borrowings
+    group: balance_sheet
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotUnSecrLoan, TotalShortTermBorrowings, UnsecuredLoan]
+    paths: ["**.LoanFunds.UnsecrLoan.TotUnSecrLoan", "**.LoanFunds.TotalShortTermBorrowings"]
+  - id: inventories_itr
+    label: Inventories
+    group: balance_sheet
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotInventries, TotalInventories, Inventories]
+    paths: ["**.CurrAsset.Inventories.TotInventries", "**.CurrentAssets.TotalInventories"]
+  - id: receivables_itr
+    label: Trade receivables
+    group: balance_sheet
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotalSundryDebtors, TotalTradeReceivable, TradeReceivables]
+    paths: ["**.SundryDebtorDtls.TotalSundryDebtors", "**.CurrentAssets.TotalTradeReceivable"]
+  - id: payables_itr
+    label: Trade payables
+    group: balance_sheet
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotalSundryCreditors, TotalTradePayable, TradePayables]
+    paths: ["**.SundryCreditorDtls.TotalSundryCreditors", "**.CurrentLiabilities.TotalTradePayable"]
+  - id: cash_itr
+    label: Cash and bank balances
+    group: balance_sheet
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotCashOrBankBal, TotalCashAndCashEquivalents, CashAndBankBalance]
+    paths: ["**.CashOrBankBal.TotCashOrBankBal", "**.CurrentAssets.TotalCashAndCashEquivalents"]
+  - id: fixed_assets_itr
+    label: Fixed assets, net block
+    group: balance_sheet
+    scope: itr
+    kind: money
+    trend: true
+    keys: [TotFixedAsset, TotalFixedAssets, NetBlock]
+
+  # ===================================================== gst break-up ======
+    paths: ["**.FundApply.FixedAsset.TotFixedAsset", "**.FixedAsset.TotalFixedAssets"]
+  - id: total_expenditure_3cd
+    label: Total expenditure reported in clause 44
+    group: pl
+    scope: 3cd
+    kind: money
+    clause: "44"
+    trend: true
+    paths: ["**.Form3cdBreakUpGST.**.TotAmtExp"]
+    keys: [TotAmtExp]
+    aggregate: sum
+  - id: expenditure_registered_3cd
+    label: Expenditure with entities registered under GST
+    group: pl
+    scope: 3cd
+    kind: money
+    clause: "44"
+    trend: true
+    paths: ["**.Form3cdBreakUpGST.**.RegEntities"]
+    keys: [RegEntities]
+    aggregate: sum
+  - id: expenditure_exempt_3cd
+    label: Expenditure on goods or services exempt from GST
+    group: pl
+    scope: 3cd
+    kind: money
+    clause: "44"
+    paths: ["**.Form3cdBreakUpGST.**.GoodOrSerGST"]
+    keys: [GoodOrSerGST]
+    aggregate: sum
+  - id: expenditure_composition_3cd
+    label: Expenditure with entities under the composition scheme
+    group: pl
+    scope: 3cd
+    kind: money
+    clause: "44"
+    paths: ["**.Form3cdBreakUpGST.**.CompSchme"]
+    keys: [CompSchme]
+    aggregate: sum
+  - id: expenditure_other_registered_3cd
+    label: Expenditure with other registered entities
+    group: pl
+    scope: 3cd
+    kind: money
+    clause: "44"
+    paths: ["**.Form3cdBreakUpGST.**.OthRegEntities"]
+    keys: [OthRegEntities]
+    aggregate: sum
+  - id: expenditure_unregistered_3cd
+    label: Expenditure with entities not registered under GST
+    group: pl
+    scope: 3cd
+    kind: money
+    clause: "44"
+    trend: true
+    paths: ["**.Form3cdBreakUpGST.**.ExpNonRegGST"]
+    keys: [ExpNonRegGST]
+
+  # ============================================================= flags =====
+    aggregate: sum
+  - id: flag_change_method_3cd
+    label: Change in the method of accounting
+    group: flags
+    scope: 3cd
+    kind: flag
+    clause: "13(b)"
+    paths: ["**.Form3cdFlags.ChngMethodOfAcc"]
+    keys: [ChngMethodOfAcc]
+
+  - id: flag_145a_3cd
+    label: Deviation from the valuation required by section 145A
+    group: flags
+    scope: 3cd
+    kind: flag
+    clause: "14(b)"
+    paths: ["**.Form3cdFlags.Sec145A"]
+    keys: [Sec145A]
+
+  - id: flag_40a3_3cd
+    label: Payments covered by section 40A(3)
+    group: flags
+    scope: 3cd
+    kind: flag
+    clause: "21(d)"
+    paths: ["**.Form3cdFlags.Sec40A3"]
+    keys: [Sec40A3]
+
+  - id: flag_share_change_79_3cd
+    label: Change in shareholding attracting section 79
+    group: flags
+    scope: 3cd
+    kind: flag
+    clause: "32(b)"
+    paths: ["**.Form3cdFlags.ChngShareSec79"]
+    keys: [ChngShareSec79]
+
+  - id: flag_partner_change_3cd
+    label: Change in the partners or members during the year
+    group: flags
+    scope: 3cd
+    kind: flag
+    clause: "9(b)"
+    paths: ["**.Form3cdFlags.ChangeInPartner"]
+    keys: [ChangeInPartner]
+
+  - id: flag_business_change_3cd
+    label: Change in the nature of the business
+    group: flags
+    scope: 3cd
+    kind: flag
+    clause: "8"
+    paths: ["**.Form3cdFlags.ChangeNaturBuisnes"]
+    keys: [ChangeNaturBuisnes]
+
+  - id: flag_books_maintained_3cd
+    label: Books of account maintained
+    group: flags
+    scope: 3cd
+    kind: flag
+    clause: "11"
+    paths: ["**.Form3cdFlags.BookOfAcnt"]
+    keys: [BookOfAcnt]
+
+  - id: flag_tds_default_3cd
+    label: Default in deduction or payment of tax at source
+    group: flags
+    scope: 3cd
+    kind: flag
+    clause: "34"
+    paths: ["**.Form3cdFlags.ChapXVIIFlag"]
+    keys: [ChapXVIIFlag]
+
+  - id: flag_201_interest_3cd
+    label: Interest under section 201(1A) or 206C(7) payable
+    group: flags
+    scope: 3cd
+    kind: flag
+    clause: "34(c)"
+    paths: ["**.Form3cdFlags.Sec201_1A_206_C7"]
+    keys: [Sec201_1A_206_C7]
+
+  - id: flag_gaar_3cd
+    label: Impermissible avoidance arrangement under section 96
+    group: flags
+    scope: 3cd
+    kind: flag
+    clause: "30C"
+    paths: ["**.Form3cdFlags.ImpermissibleSec96"]
+    keys: [ImpermissibleSec96]
+
+  - id: flag_92ce_3cd
+    label: Primary adjustment to transfer price under section 92CE
+    group: flags
+    scope: 3cd
+    kind: flag
+    clause: "30A"
+    paths: ["**.Form3cdFlags.TransferPriceSection92CE"]
+    keys: [TransferPriceSection92CE]
+
+  - id: flag_thin_cap_3cd
+    label: Interest expenditure exceeding one crore under section 94B
+    group: flags
+    scope: 3cd
+    kind: flag
+    clause: "30B"
+    paths: ["**.Form3cdFlags.IncurredExpenditure"]
+    keys: [IncurredExpenditure]
+
+  # --- read from the return's trading account and other information --------
+  - id: gross_profit_itr
+    label: Gross profit per the trading account in the return
+    group: pl
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.TradingAccount.GrossProfitFrmBusProf", "**.CreditsToPL.GrossProfitTrnsfFrmTrdAcc"]
+    keys: [GrossProfitFrmBusProf, GrossProfitTrnsfFrmTrdAcc]
+
+  - id: opening_stock_itr
+    label: Opening stock per the trading account in the return
+    group: stock
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.TradingAccount.OpngStckOfFinishedStcks"]
+    keys: [OpngStckOfFinishedStcks, OpeningStock]
+
+  - id: closing_stock_itr
+    label: Closing stock per the trading account in the return
+    group: stock
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.TradingAccount.ClsngStckOfFinishedStcks"]
+    keys: [ClsngStckOfFinishedStcks]
+
+  - id: purchases_itr
+    label: Purchases per the trading account in the return
+    group: pl
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.TradingAccount.Purchases"]
+    keys: [Purchases]
+
+  - id: gst_turnover_itr
+    label: Turnover reported against the GST registrations in the return
+    group: pl
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.ScheduleGST.TurnoverGrsRcptForGSTIN.*.AmtTurnGrossRcptGSTIN"]
+    keys: [AmtTurnGrossRcptGSTIN]
+    aggregate: sum
+    note: >-
+      Schedule GST in the return asks for turnover as reported in the goods and
+      services tax returns. It is the one figure in the return that the
+      department can reconcile against another department's data without asking
+      the assessee anything.
+
+  - id: total_credits_itr
+    label: Total credits to the profit and loss account in the return
+    group: pl
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.CreditsToPL.TotCreditsToPL"]
+    keys: [TotCreditsToPL]
+
+  - id: method_of_accounting_itr
+    label: Method of accounting stated in the return
+    group: identity
+    scope: itr
+    kind: text
+    paths: ["**.PARTA_OI.MethodOfAcct", "**.PartA_OI.MethodOfAcct"]
+    keys: [MethodOfAcct]
+
+  - id: flag_change_method_itr
+    label: Change in the method of accounting, per the return
+    group: flags
+    scope: itr
+    kind: flag
+    paths: ["**.PARTA_OI.ChangeInAcctMethFlg", "**.PartA_OI.ChangeInAcctMethFlg"]
+    keys: [ChangeInAcctMethFlg]
+
+  - id: flag_stock_valuation_change_itr
+    label: Change in the method of valuing closing stock, per the return
+    group: flags
+    scope: itr
+    kind: flag
+    paths: ["**.MethodOfValClgStk.ChngStockValMetFlg"]
+    keys: [ChngStockValMetFlg]
+
+  - id: cash_disallowance_itr
+    label: Cash payments above the limit, per the return
+    group: disallowance
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.AmtDisallUs40A.AmtGT20kCash"]
+    keys: [AmtGT20kCash]
+
+  - id: payments_40a2b_itr
+    label: Payments to specified persons, per the return
+    group: disallowance
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.AmtDisallUs40A.AmtPaidUs40A2b"]
+    keys: [AmtPaidUs40A2b]
+
+  - id: pf_disallowed_itr
+    label: Employee contributions disallowed under section 36(1)(va), per the return
+    group: disallowance
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.AmtDisallUs36.EmpContributionCredits"]
+    keys: [EmpContributionCredits]
+
+  - id: section_41_itr
+    label: Amounts chargeable under section 41, per the return
+    group: disallowance
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.PARTA_OI.ProfTaxAmtUs41", "**.PartA_OI.ProfTaxAmtUs41"]
+    keys: [ProfTaxAmtUs41]
+
+  - id: prior_period_itr
+    label: Prior period amounts credited or debited, per the return
+    group: disallowance
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.PARTA_OI.PriorAmtIncCrDrPL", "**.PartA_OI.PriorAmtIncCrDrPL"]
+    keys: [PriorAmtIncCrDrPL]
+
+  - id: unpaid_43b_itr
+    label: Sums under section 43B not allowable, per the return
+    group: statutory
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.AmtDisall43B.AmtUs43B.TotAmtUs43b"]
+    keys: [TotAmtUs43b]
+
+  - id: disallowance_40_itr
+    label: Disallowance under section 40, per the return
+    group: disallowance
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.AmtDisallUs40.TotAmtDisallUs40"]
+    keys: [TotAmtDisallUs40]
+
+  - id: disallowance_37_itr
+    label: Disallowance under section 37, per the return
+    group: disallowance
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.AmtDisallUs37.TotAmtDisallUs37"]
+    keys: [TotAmtDisallUs37]
+
+  - id: partner_remuneration_itr
+    label: Remuneration to partners debited in the return
+    group: pl
+    scope: itr
+    kind: money
+    trend: true
+    paths: ["**.PARTA_PL.SalRemrtnToPartnerFirm", "**.DebitPlAcnt.SalRemuneration"]
+    keys: [SalRemrtnToPartnerFirm]
+
+  - id: qty_closing_stock_itr
+    label: Closing stock quantity per the return's quantitative details
+    group: stock
+    scope: itr
+    kind: count
+    trend: true
+    paths: ["**.QuantitDet.*.ClgStock"]
+    keys: [ClgStock]
+    aggregate: sum
+
+  - id: qty_opening_stock_itr
+    label: Opening stock quantity per the return's quantitative details
+    group: stock
+    scope: itr
+    kind: count
+    trend: true
+    paths: ["**.QuantitDet.*.OpeningStock"]
+    aggregate: sum
+
+  - id: qty_shortage_itr
+    label: Shortage or excess quantity per the return's quantitative details
+    group: stock
+    scope: itr
+    kind: count
+    trend: true
+    paths: ["**.QuantitDet.*.AnyShortExces"]
+    keys: [AnyShortExces]
+    aggregate: sum
+
+  - id: udin_itr
+    label: UDIN of the audit report, as stated in the return
+    group: identity
+    scope: itr
+    kind: text
+    paths: ["**.AuditInfo.UDIN"]
+    keys: [UDIN]
+
+  - id: audit_ack_itr
+    label: Acknowledgement number of the audit report furnished
+    group: identity
+    scope: itr
+    kind: text
+    paths: ["**.AuditInfo.AckNum44AB"]
+    keys: [AckNum44AB]
+
+  - id: auditor_firm_itr
+    label: Name of the audit firm stated in the return
+    group: identity
+    scope: itr
+    kind: text
+    paths: ["**.AuditInfo.AudFrmName"]
+    keys: [AudFrmName]
+
+  - id: auditor_firm_reg_itr
+    label: Firm registration number stated in the return
+    group: identity
+    scope: itr
+    kind: text
+    paths: ["**.AuditInfo.AudFrmRegNo"]
+    keys: [AudFrmRegNo]
+
+  - id: flag_92e_itr
+    label: Liable to furnish a report under section 92E, per the return
+    group: flags
+    scope: itr
+    kind: flag
+    paths: ["**.PartA_GEN2.LiableSec92Eflg"]
+    keys: [LiableSec92Eflg]
+
+  - id: flag_partner_change_itr
+    label: Change in the partners or members during the year, per the return
+    group: flags
+    scope: itr
+    kind: flag
+    paths: ["**.PartA_GEN2.PrevYrMemPartChange"]
+    keys: [PrevYrMemPartChange]
+
+  - id: status_itr
+    label: Status or constitution code stated in the return
+    group: identity
+    scope: itr
+    kind: text
+    paths: ["**.OrgFirmInfo.StatusOrCompanyType", "**.PersonalInfo.StatusOrCompanyType"]
+    keys: [StatusOrCompanyType, SubStatus]
+
+  - id: incorporation_date_itr
+    label: Date of formation or incorporation stated in the return
+    group: identity
+    scope: itr
+    kind: date
+    paths: ["**.OrgFirmInfo.DateOFFormOrIncorp"]
+    keys: [DateOFFormOrIncorp, DateOfIncorporation]
+
+# ---------------------------------------------------------------------------
+# Derived metrics.
+#
+# Computed from the facts above, per year, with a small arithmetic expression.
+# Only + - * / ( ) and fact identifiers are permitted: a metric must stay
+# readable by the person who has to defend it. A metric whose inputs are not all
+# available for a year is not computed for that year — it is not zero.
+#
+# `guard` names a fact that must be non-zero for the metric to mean anything,
+# which is how a division by a turnover of nil becomes "not available" rather
+# than an exception or an infinity.
+# ---------------------------------------------------------------------------
+derived:
+
+  - id: expense_ratio
+    label: Total expenditure to turnover (%)
+    group: pl
+    kind: ratio
+    trend: true
+    expr: total_expenditure_itr / turnover_itr * 100
+    guard: turnover_itr
+
+  - id: other_income_share
+    label: Other income to total income credited (%)
+    group: pl
+    kind: ratio
+    trend: true
+    expr: other_income_itr / (turnover_itr + other_income_itr) * 100
+    guard: turnover_itr
+
+  - id: effective_tax_rate
+    label: Tax payable to total income (%)
+    group: computation
+    kind: ratio
+    trend: true
+    expr: tax_payable_itr / total_income_itr * 100
+    guard: total_income_itr
+
+  - id: taxable_to_book_profit
+    label: Total income to net profit per books (%)
+    group: computation
+    kind: ratio
+    trend: true
+    expr: total_income_itr / net_profit_itr * 100
+    guard: net_profit_itr
+
+  - id: debtor_days
+    label: Trade receivables in days of turnover
+    group: balance_sheet
+    kind: ratio
+    trend: true
+    expr: receivables_itr / turnover_itr * 365
+    guard: turnover_itr
+
+  - id: creditor_days
+    label: Trade payables in days of expenditure
+    group: balance_sheet
+    kind: ratio
+    trend: true
+    expr: payables_itr / total_expenditure_itr * 365
+    guard: total_expenditure_itr
+
+  - id: inventory_days
+    label: Inventories in days of turnover
+    group: balance_sheet
+    kind: ratio
+    trend: true
+    expr: inventories_itr / turnover_itr * 365
+    guard: turnover_itr
+
+  - id: borrowings_total
+    label: Total borrowings
+    group: balance_sheet
+    kind: money
+    trend: true
+    expr: secured_loans_itr + unsecured_loans_itr
+
+  - id: effective_depreciation_rate
+    label: Depreciation allowable to the opening block plus additions (%)
+    group: depreciation
+    kind: ratio
+    trend: true
+    expr: dep_allowable_3cd / (dep_opening_wdv_3cd + dep_additions_3cd) * 100
+    guard: dep_opening_wdv_3cd
+
+  - id: cash_disallowance_to_expenditure
+    label: Section 40A(3) disallowance to total expenditure (%)
+    group: disallowance
+    kind: ratio
+    trend: true
+    expr: cash_disallowance_3cd / total_expenditure_3cd * 100
+    guard: total_expenditure_3cd
+
+  - id: unregistered_expenditure_share
+    label: Expenditure with unregistered entities, share of total (%)
+    group: pl
+    kind: ratio
+    trend: true
+    expr: expenditure_unregistered_3cd / total_expenditure_3cd * 100
+    guard: total_expenditure_3cd
+
+  - id: tds_effective_rate
+    label: Tax deducted to payments liable to deduction (%)
+    group: tds
+    kind: ratio
+    trend: true
+    expr: tds_deducted_3cd / tds_payments_3cd * 100
+    guard: tds_payments_3cd
+
+  - id: unpaid_43b_to_expenditure
+    label: Unpaid 43B liability to total expenditure (%)
+    group: statutory
+    kind: ratio
+    trend: true
+    expr: unpaid_43b_3cd / total_expenditure_3cd * 100
+    guard: total_expenditure_3cd
+
+  - id: related_party_share
+    label: Payments to specified persons, share of total expenditure (%)
+    group: disallowance
+    kind: ratio
+    trend: true
+    expr: payments_40a2b_3cd / total_expenditure_3cd * 100
+    guard: total_expenditure_3cd
+
+  - id: stock_movement
+    label: Movement in stock over the year, per the quantitative details
+    group: stock
+    kind: money
+    trend: true
+    expr: qty_closing_stock_3cd - qty_opening_stock_3cd
+
+  - id: pf_unpaid
+    label: Employee contributions received but not paid
+    group: disallowance
+    kind: money
+    trend: true
+    expr: pf_employee_amount_3cd - pf_employee_paid_3cd
+
+  - id: tds_interest_unpaid
+    label: Interest under section 201(1A) reported but not paid
+    group: tds
+    kind: money
+    trend: true
+    expr: tds_interest_3cd - tds_interest_paid_3cd
+
+  - id: gst_components_total
+    label: Sum of the clause 44 expenditure components
+    group: pl
+    kind: money
+    expr: expenditure_exempt_3cd + expenditure_composition_3cd + expenditure_other_registered_3cd + expenditure_unregistered_3cd
+
+  - id: expenditure_from_credits
+    label: Expenditure implied by the profit and loss account in the return
+    group: pl
+    kind: money
+    trend: true
+    expr: total_credits_itr - net_profit_itr
+    guard: total_credits_itr
+
+  - id: gp_ratio_itr
+    label: Gross profit to turnover per the return (%)
+    group: ratios
+    kind: ratio
+    trend: true
+    expr: gross_profit_itr / turnover_itr * 100
+    guard: turnover_itr
+
+  - id: np_ratio_itr
+    label: Net profit to turnover per the return (%)
+    group: ratios
+    kind: ratio
+    trend: true
+    expr: net_profit_itr / turnover_itr * 100
+    guard: turnover_itr
+
+  - id: gst_turnover_gap
+    label: Turnover per the return less turnover reported under GST
+    group: pl
+    kind: money
+    trend: true
+    expr: turnover_itr - gst_turnover_itr
+
+  - id: partner_remuneration_share
+    label: Remuneration to partners, share of gross profit (%)
+    group: pl
+    kind: ratio
+    trend: true
+    expr: partner_remuneration_itr / gross_profit_itr * 100
+    guard: gross_profit_itr
